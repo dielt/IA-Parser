@@ -303,8 +303,8 @@ data Person = Person
 	,pIntent :: Maybe Intent
 	,pPlayer :: Bool
 	}
-newPerson :: Id -> Person
-newPerson id = Person 
+newPersonId :: Id -> Person
+newPersonId id = Person 
 	{pId = id
 	,pLoc = Coord (0,0)
 	,pVolume = Ml 66400
@@ -312,6 +312,11 @@ newPerson id = Person
 	,pIntent = Nothing
 	,pPlayer = False
 	}
+
+newPlayerId :: Id -> Person
+newPlayerId id = let p = newPersonId id in
+	p{pPlayer=True}
+
 
 data Bottle = Bottle 
 	{bottleId :: Id
@@ -384,6 +389,7 @@ data World = World {
 	,people :: People
 	,bottles:: Bottles
 	,wrldInv:: [Id]
+	,sysEvent::Maybe SysIntent
 	}
 
 instance Object World where
@@ -423,7 +429,11 @@ newWorld = World
 	,people = []
 	,bottles = []
 	,wrldInv = []
+	,sysEvent = Nothing
 	}
+	
+newWorldState :: State World ()
+newWorldState = put newWorld
 
 incId :: Id -> Id
 incId (Id x) = Id (x+1)
@@ -447,6 +457,14 @@ getId = do
 
 
 getIds = liftM2 (,) getId getId
+
+
+newPersonWorld :: State World Person
+newPersonWorld = getId >>= (return . newPersonId)
+
+newPlayerWorld = getId >>= (return .  newPlayerId)
+
+
 \end{code}
 
 
