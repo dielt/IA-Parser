@@ -1,5 +1,5 @@
 \begin{code}
-module Parse where
+module IAParse where
 
 import Control.Applicative
 import Control.Arrow
