@@ -254,6 +254,51 @@ instance WorldFold AliveA where
 
 
 
+Now our attempt at combining worldFold classes
+
+The idea is that we can constuct some new data combinator
+And use the intersection of the two datatypes's anon lists as the new list.
+
+\begin{code}
+
+intersectId :: (Object a,Object b) =>  [a] -> [b] -> [(a,b)]
+intersectId list1 list2 = let idnList = (map idn list1) `intersect` (map idn list2) in
+	foldr 
+		(\x xs -> 
+			(head . filter (\y -> idn y == x) $ list1 
+			,head . filter (\y -> idn y == x) $ list2  
+			) : xs 
+		) [] idnList
+	
+
+\end{code}
+i.e. every object of this list can be considered a member of both previous data types, 
+e.g. for A B
+
+instance A (a,b)
+	F_A :: A -> C
+	F_A (a,b) = F_A a
+	
+etc
+
+
+
+
+\begin{code}
+
+--eg
+
+data AliveContainerA = forall a. (Container a, Alive a) => AliveContainerA a
+
+
+
+\end{code}
+
+
+
+
+
+
 
 Note If we want to make the world a container and object we should make sure this fn has the proper (nonstandard) behaviour.
 

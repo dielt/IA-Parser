@@ -17,6 +17,20 @@ import IASyn
 
 \end{code}
 
+NB Parsers have been modified/commented out to accomadate the new Data structure.
+This brings up the question of our reliance on large parts of the world and related functions
+Really this either ought to be a more syntactic process
+Or else we need extract the base action functions to a parent file
+
+
+
+
+
+
+
+
+
+
 These parsers seem to be working alright. Currently though we consider a single word as a single sign
 That is, if we have a multi word phrase each word has to be considered sepereatly
 This mostly works, especially if we can anticipate common multi-word constructs, get in vs get apple or similar
