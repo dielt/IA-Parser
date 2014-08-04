@@ -1,6 +1,8 @@
 
 \begin{code}
 {-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE RankNTypes  #-}
+
 
 
 module IAData where
@@ -74,6 +76,12 @@ worldObjects wrld =
 This is the basic object managment code, note these delete the objects from the world, not just from inventories
 
 \begin{code}
+
+clearWorld :: (WorldFold a,AnonObject a) => World -> a -> World --again tail used for easy type enforcement
+clearWorld wrld a = foldr (\o w -> bindAnonObj o (emptyList w)  ) wrld (tail $ a : (anonObjects wrld))
+	where 
+		emptyList w i = setThings w $ tail $ i : []
+
 
 -- (tail [o]) == [] and allows us to set the type of an empty list to a type we cannot access
 clearWorldObjects :: World -> World 
@@ -290,7 +298,7 @@ For example
 data AliveContainerA = forall a b. (Container b, Alive a) => AliveContainerA (a,b)
 
 instance Object AliveContainerA where --keep in mind both a and b are the same object, in differant wrappers
-	idn (AliveContainerA (a,b)) = idn a --this is going to lead to difficulties in setThings, where we are going to need to recombine
+	idn (AliveContainerA (a,b)) = idn a --this is going to lead to difficulties in setThings, where we are going to need to recombine the two.
 	loc (AliveContainerA (a,b)) = loc a
 	setLoc (AliveContainerA (a,b)) = \c -> AliveContainerA $ (setLoc a c,setLoc b c)
 	names (AliveContainerA (a,b)) = names a
@@ -304,18 +312,52 @@ instance Alive AliveContainerA where
 	intent (AliveContainerA (a,b)) = intent a
 	setIntent (AliveContainerA (a,b)) = \i -> AliveContainerA (setIntent a i,b)
 	player (AliveContainerA (a,b)) = player a
+	
+instance Container AliveContainerA where
+	inventory (AliveContainerA (a,b)) = inventory b
+	setInventory (AliveContainerA (a,b)) = \i -> AliveContainerA $ (a,setInventory b i)
+	checkInventory (AliveContainerA (a,b)) = checkInventory b
+	capacity (AliveContainerA (a,b)) = capacity b
+	armSpan (AliveContainerA (a,b)) = armSpan b
+	containerNames (AliveContainerA (a,b)) = containerNames b
+	locked (AliveContainerA (a,b)) = locked b
 
 instance WorldFold AliveContainerA where
 	anonObjects = \wrld -> map AliveContainerA $ intersectId (anonObjects wrld :: [AliveA]) (anonObjects wrld :: [ContainerA])
+	
+--here we should be given an ObjectA that matches idn 
+--we can then use this as part of setThings
+mergeAliveContainer :: (Container c,Alive c) => AliveContainerA -> c -> c
+mergeAliveContainer alCon c =
+	(\x -> setInventory x (inventory alCon) ) .
+	(\x -> setIntent x (intent alCon)       ) .
+	(\x -> setParent x (parent alCon)       ) .
+	(\x -> setLoc x    (loc    alCon)       ) $ c
+	
+	
 
 \end{code}
 
- Now ideally we would be able to write some sort of function for this.
+Now ideally we would be able to write some sort of function for this.
 That takes two anonymous datatypes and provides generic instance defs in line with above
 the problem is that I think we lead into type level lambda again. :|
 I actually do not foresee this being a serious issue. 
 At worst we can split out these sort of things into their own data file and just have a ton there
 And there are other issues if we get an unseemly number of orthogonal classes which need combining.
+
+
+
+\begin{code}
+
+class Object o => AnonObject o where
+	bindAnonObj :: o -> (forall a. Object a => a -> b) -> b
+
+instance AnonObject ObjectA where
+	bindAnonObj (ObjectA o) f = f o
+
+
+\end{code}
+
 
 
 
