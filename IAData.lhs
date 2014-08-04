@@ -132,7 +132,7 @@ instance Object ContainerA where
 	setLoc (ContainerA o) = \c -> ContainerA $ setLoc o c
 	names (ContainerA o) = names o
 	things = worldContainers
-	setThings wrld list = foldr (\(ContainerA o) w -> (worldAObj o w) ) (clearWorldObjects wrld) list
+	--setThings wrld list = foldr (\(ContainerA o) w -> (worldAObj o w) ) (clearWorldObjects wrld) list
 	objVolume (ContainerA o) = objVolume o
 	parent (ContainerA o) = parent o
 	setParent (ContainerA o) = \p -> ContainerA $ setParent o p
@@ -163,7 +163,7 @@ instance Object FluidContainerA where
 	setLoc (FluidContainerA o) = \c -> FluidContainerA $ setLoc o c
 	names (FluidContainerA o) = names o
 	things = worldFluidContainers
-	setThings wrld list = foldr (\(FluidContainerA o) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
+	--setThings wrld list = foldr (\(FluidContainerA o) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
 	objVolume (FluidContainerA o) = objVolume o
 	parent (FluidContainerA o) = parent o
 	setParent (FluidContainerA o) = \p -> FluidContainerA $ setParent o p
@@ -198,7 +198,7 @@ instance Object AliveA where
 	setLoc (AliveA o) = \c -> AliveA $ setLoc o c
 	names (AliveA o) = names o
 	things = worldAlives
-	setThings wrld list = foldr (\(AliveA o) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
+	--setThings wrld list = foldr (\(AliveA o) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
 	objVolume (AliveA o) = objVolume o
 	parent (AliveA o) = parent o
 	setParent (AliveA o) = \p -> AliveA $ setParent o p
@@ -269,7 +269,8 @@ intersectId list1 list2 = let idnList = (map idn list1) `intersect` (map idn lis
 			,head . filter (\y -> idn y == x) $ list2  
 			) : xs 
 		) [] idnList
-	
+
+
 
 \end{code}
 i.e. every object of this list can be considered a member of both previous data types, 
@@ -282,19 +283,39 @@ instance A (a,b)
 etc
 
 
-
+For example
 
 \begin{code}
 
---eg
+data AliveContainerA = forall a b. (Container b, Alive a) => AliveContainerA (a,b)
 
-data AliveContainerA = forall a. (Container a, Alive a) => AliveContainerA a
+instance Object AliveContainerA where --keep in mind both a and b are the same object, in differant wrappers
+	idn (AliveContainerA (a,b)) = idn a --this is going to lead to difficulties in setThings, where we are going to need to recombine
+	loc (AliveContainerA (a,b)) = loc a
+	setLoc (AliveContainerA (a,b)) = \c -> AliveContainerA $ (setLoc a c,setLoc b c)
+	names (AliveContainerA (a,b)) = names a
+	things = \wrld -> map AliveContainerA (intersectId (things wrld :: [AliveA]) (things wrld :: [ContainerA]))
+	--setThings wrld list = foldr (\(AliveContainerA (a,b)) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
+	objVolume (AliveContainerA (a,b)) = objVolume a
+	parent (AliveContainerA (a,b)) = parent a
+	setParent (AliveContainerA (a,b)) = \p -> AliveContainerA $ (setParent a p,setParent b p) 
 
+instance Alive AliveContainerA where
+	intent (AliveContainerA (a,b)) = intent a
+	setIntent (AliveContainerA (a,b)) = \i -> AliveContainerA (setIntent a i,b)
+	player (AliveContainerA (a,b)) = player a
 
+instance WorldFold AliveContainerA where
+	anonObjects = \wrld -> map AliveContainerA $ intersectId (anonObjects wrld :: [AliveA]) (anonObjects wrld :: [ContainerA])
 
 \end{code}
 
-
+ Now ideally we would be able to write some sort of function for this.
+That takes two anonymous datatypes and provides generic instance defs in line with above
+the problem is that I think we lead into type level lambda again. :|
+I actually do not foresee this being a serious issue. 
+At worst we can split out these sort of things into their own data file and just have a ton there
+And there are other issues if we get an unseemly number of orthogonal classes which need combining.
 
 
 
