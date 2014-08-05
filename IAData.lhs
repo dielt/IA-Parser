@@ -1,7 +1,6 @@
 
 \begin{code}
 {-# LANGUAGE ExistentialQuantification  #-}
-{-# LANGUAGE RankNTypes  #-}
 
 
 
@@ -25,8 +24,14 @@ If we were to try seperating class and data strictly we run into circular requir
 
 The easiest thing to split out is basic data defs.
 
+Some basic util fns
+\begin{code}
+
+emptyList :: a -> [a]
+emptyList a = tail [a]
 
 
+\end{code}
 
 
 Object Class definitions and related instances, including hetrogeneous container
@@ -44,7 +49,6 @@ class Object o where
 	parent :: o -> Id --nb, where parent id == world id the object is just in the world
 	setParent :: o -> Id -> o
 
-
 data ObjectA = forall a.  Object a => ObjectA a
 
 --note Cannot derive Eq due to non haskell 98 complience.
@@ -60,7 +64,7 @@ instance Object ObjectA where
 	setLoc (ObjectA o) = \c -> ObjectA $ setLoc o c
 	names (ObjectA o) = names o
 	things = worldObjects
-	setThings wrld list = foldr (\(ObjectA o) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
+	setThings wrld list = let clearW = foldr (\(ObjectA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(ObjectA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (ObjectA o) = objVolume o
 	parent (ObjectA o) = parent o
 	setParent (ObjectA o) = \p -> ObjectA $ setParent o p
@@ -76,16 +80,6 @@ worldObjects wrld =
 This is the basic object managment code, note these delete the objects from the world, not just from inventories
 
 \begin{code}
-
-clearWorld :: (WorldFold a,AnonObject a) => World -> a -> World --again tail used for easy type enforcement
-clearWorld wrld a = foldr (\o w -> bindAnonObj o (emptyList w)  ) wrld (tail $ a : (anonObjects wrld))
-	where 
-		emptyList w i = setThings w $ tail $ i : []
-
-
--- (tail [o]) == [] and allows us to set the type of an empty list to a type we cannot access
-clearWorldObjects :: World -> World 
-clearWorldObjects wrld = foldr (\(ObjectA o) w -> setThings w (tail [o]) ) wrld (worldObjects wrld)
 
 worldAObj :: Object a => a -> World -> World
 worldAObj obj wrld = setThings wrld (obj : (things wrld))
@@ -140,7 +134,7 @@ instance Object ContainerA where
 	setLoc (ContainerA o) = \c -> ContainerA $ setLoc o c
 	names (ContainerA o) = names o
 	things = worldContainers
-	--setThings wrld list = foldr (\(ContainerA o) w -> (worldAObj o w) ) (clearWorldObjects wrld) list
+	setThings wrld list = let clearW = foldr (\(ContainerA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(ContainerA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (ContainerA o) = objVolume o
 	parent (ContainerA o) = parent o
 	setParent (ContainerA o) = \p -> ContainerA $ setParent o p
@@ -171,7 +165,7 @@ instance Object FluidContainerA where
 	setLoc (FluidContainerA o) = \c -> FluidContainerA $ setLoc o c
 	names (FluidContainerA o) = names o
 	things = worldFluidContainers
-	--setThings wrld list = foldr (\(FluidContainerA o) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
+	setThings wrld list = let clearW = foldr (\(FluidContainerA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(FluidContainerA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (FluidContainerA o) = objVolume o
 	parent (FluidContainerA o) = parent o
 	setParent (FluidContainerA o) = \p -> FluidContainerA $ setParent o p
@@ -206,7 +200,7 @@ instance Object AliveA where
 	setLoc (AliveA o) = \c -> AliveA $ setLoc o c
 	names (AliveA o) = names o
 	things = worldAlives
-	--setThings wrld list = foldr (\(AliveA o) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
+	setThings wrld list = let clearW = foldr (\(AliveA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(AliveA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (AliveA o) = objVolume o
 	parent (AliveA o) = parent o
 	setParent (AliveA o) = \p -> AliveA $ setParent o p
@@ -234,7 +228,6 @@ worldAlives wrld = map AliveA (people wrld)
 The various worldFolds, now as a class
 
 \begin{code}
-
 class Object c => WorldFold c where
 	anonObjects :: World -> [c]
 	worldFunction :: World -> ([c] -> b ) -> b
@@ -303,10 +296,18 @@ instance Object AliveContainerA where --keep in mind both a and b are the same o
 	setLoc (AliveContainerA (a,b)) = \c -> AliveContainerA $ (setLoc a c,setLoc b c)
 	names (AliveContainerA (a,b)) = names a
 	things = \wrld -> map AliveContainerA (intersectId (things wrld :: [AliveA]) (things wrld :: [ContainerA]))
-	--setThings wrld list = foldr (\(AliveContainerA (a,b)) w ->  (worldAObj o w) ) (clearWorldObjects wrld) list
 	objVolume (AliveContainerA (a,b)) = objVolume a
 	parent (AliveContainerA (a,b)) = parent a
 	setParent (AliveContainerA (a,b)) = \p -> AliveContainerA $ (setParent a p,setParent b p) 
+	--setThings = setAliveContainerAs
+
+setAliveContainerAs :: World -> [AliveContainerA] -> World
+setAliveContainerAs wrld list =
+	let
+		clearW = foldr (\(AliveContainerA (a,b)) w -> w ) wrld list
+	in wrld
+
+--setThings wrld list = let clearW = foldr (\(ContainerA o) w -> setThings w $ emptyList o ) wrld list in  foldr (\(ContainerA o) w ->  (worldAObj o w) ) clearW list
 
 instance Alive AliveContainerA where
 	intent (AliveContainerA (a,b)) = intent a
@@ -346,18 +347,7 @@ At worst we can split out these sort of things into their own data file and just
 And there are other issues if we get an unseemly number of orthogonal classes which need combining.
 
 
-
-\begin{code}
-
-class Object o => AnonObject o where
-	bindAnonObj :: o -> (forall a. Object a => a -> b) -> b
-
-instance AnonObject ObjectA where
-	bindAnonObj (ObjectA o) f = f o
-
-
-\end{code}
-
+The main problem with our current setThings, is that we need some way of working out the type of our merged function. 
 
 
 
