@@ -64,7 +64,7 @@ instance Object ObjectA where
 	setLoc (ObjectA o) = \c -> ObjectA $ setLoc o c
 	names (ObjectA o) = names o
 	things = worldObjects
-	setThings wrld list = let clearW = foldr (\(ObjectA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(ObjectA o) w ->  (worldAObj o w) ) clearW list
+	setThings wrld list = let clearW = foldr (\(ObjectA o) w -> setThings w $ emptyList o ) wrld (things wrld) in  foldr (\(ObjectA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (ObjectA o) = objVolume o
 	parent (ObjectA o) = parent o
 	setParent (ObjectA o) = \p -> ObjectA $ setParent o p
@@ -134,7 +134,7 @@ instance Object ContainerA where
 	setLoc (ContainerA o) = \c -> ContainerA $ setLoc o c
 	names (ContainerA o) = names o
 	things = worldContainers
-	setThings wrld list = let clearW = foldr (\(ContainerA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(ContainerA o) w ->  (worldAObj o w) ) clearW list
+	setThings wrld list = let clearW = foldr (\(ContainerA o) w -> setThings w $ emptyList o ) wrld (things wrld) in  foldr (\(ContainerA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (ContainerA o) = objVolume o
 	parent (ContainerA o) = parent o
 	setParent (ContainerA o) = \p -> ContainerA $ setParent o p
@@ -165,7 +165,7 @@ instance Object FluidContainerA where
 	setLoc (FluidContainerA o) = \c -> FluidContainerA $ setLoc o c
 	names (FluidContainerA o) = names o
 	things = worldFluidContainers
-	setThings wrld list = let clearW = foldr (\(FluidContainerA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(FluidContainerA o) w ->  (worldAObj o w) ) clearW list
+	setThings wrld list = let clearW = foldr (\(FluidContainerA o) w -> setThings w $ emptyList o ) wrld (things wrld) in  foldr (\(FluidContainerA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (FluidContainerA o) = objVolume o
 	parent (FluidContainerA o) = parent o
 	setParent (FluidContainerA o) = \p -> FluidContainerA $ setParent o p
@@ -200,7 +200,7 @@ instance Object AliveA where
 	setLoc (AliveA o) = \c -> AliveA $ setLoc o c
 	names (AliveA o) = names o
 	things = worldAlives
-	setThings wrld list = let clearW = foldr (\(AliveA o) w -> setThings w $ emptyList o ) wrld (anonObjects wrld) in  foldr (\(AliveA o) w ->  (worldAObj o w) ) clearW list
+	setThings wrld list = let clearW = foldr (\(AliveA o) w -> setThings w $ emptyList o ) wrld (things wrld) in  foldr (\(AliveA o) w ->  (worldAObj o w) ) clearW list
 	objVolume (AliveA o) = objVolume o
 	parent (AliveA o) = parent o
 	setParent (AliveA o) = \p -> AliveA $ setParent o p
@@ -227,29 +227,23 @@ worldAlives wrld = map AliveA (people wrld)
 
 The various worldFolds, now as a class
 
-\begin{code}
-class Object c => WorldFold c where
-	anonObjects :: World -> [c]
-	worldFunction :: World -> ([c] -> b ) -> b
-	worldFunction = \wrld f -> f . anonObjects $ wrld
-	worldFoldFilter :: World -> (c -> Bool) -> (c -> b -> b) -> b -> b
-	worldFoldFilter = \wrld test f z  -> foldr f z (filter test (anonObjects wrld))
-	worldFold :: World -> (c -> b -> b) -> b -> b
-	worldFold = \wrld f z -> worldFoldFilter wrld (\_ -> True) f z
-	worldAppId :: World -> (c -> b) -> Id -> Maybe b
-	worldAppId = \wrld f idt -> worldFoldFilter wrld (\x -> idn x == idt) (\a b -> Just $ f a) Nothing
+Trying to seperate worldFold and AnonObjects as seperate classes I've realized
+things == things, though only defined for anonymous objects, 
+And given that it is currently a subclass of object the whole thing is uneeded
+Especially as we might like to fold over just normal datatype at some point.
+Though it does give us the idea of splitting things out of 
 
-instance WorldFold ObjectA where
-	anonObjects = worldObjects
-	
-instance WorldFold ContainerA where
-	anonObjects = worldContainers
-	
-instance WorldFold FluidContainerA where
-	anonObjects = worldFluidContainers
-	
-instance WorldFold AliveA where
-	anonObjects = worldAlives
+\begin{code}
+
+worldFunction :: Object c => World -> ([c] -> b ) -> b
+worldFunction = \wrld f -> f . things $ wrld
+worldFoldFilter ::Object c => World -> (c -> Bool) -> (c -> b -> b) -> b -> b
+worldFoldFilter = \wrld test f z  -> foldr f z (filter test (things wrld))
+worldFold :: Object c => World -> (c -> b -> b) -> b -> b
+worldFold = \wrld f z -> worldFoldFilter wrld (\_ -> True) f z
+worldAppId :: Object c => World -> (c -> b) -> Id -> Maybe b
+worldAppId = \wrld f idt -> worldFoldFilter wrld (\x -> idn x == idt) (\a b -> Just $ f a) Nothing
+
 	
 \end{code}
 
@@ -299,13 +293,53 @@ instance Object AliveContainerA where --keep in mind both a and b are the same o
 	objVolume (AliveContainerA (a,b)) = objVolume a
 	parent (AliveContainerA (a,b)) = parent a
 	setParent (AliveContainerA (a,b)) = \p -> AliveContainerA $ (setParent a p,setParent b p) 
-	--setThings = setAliveContainerAs
+	setThings = setAliveContainerAs
+\end{code}
+
+The def of setThings is somewhat more complicated.
+It essentially requires that we can merge the changes accumulated in our double object with the original.
+Similarly we have issues with our previous assumption of elemenating every object of the associated data type.
+The problem here is that we have two more general data types, 
+Whereas previously any data type in the single AnonObject must satisfy the constraint. Now we have no such condtion.
+The only solution I can see is to match ids on the things function
+I.e. we clear the world based on the things function and then replace them with merged things
+
+Also, A lot of fromJusts in the following code, we should probably replace them 
+
+
+\begin{code}
 
 setAliveContainerAs :: World -> [AliveContainerA] -> World
 setAliveContainerAs wrld list =
-	let
-		clearW = foldr (\(AliveContainerA (a,b)) w -> w ) wrld list
-	in wrld
+	let --this is could use cleaning up
+		idList :: [Id]
+		idList = map idn (things wrld :: [AliveContainerA]) 
+		clearW :: World
+		clearW = foldr (\idt w -> worldDObj idt w) wrld idList
+		addedObjW :: World
+		addedObjW = foldr (\idt w -> fromJust $ worldAppId wrld (addMergeObject w list) idt ) clearW idList
+		mergeAlW :: World -> World
+		mergeAlW w = foldr (\idt w' -> fromJust $ worldAppId w' (mergeAliveA w') idt ) w idList
+		mergeConW :: World -> World
+		mergeConW w = foldr (\idt w' -> fromJust $ worldAppId w' (mergeContainerA w') idt ) w idList
+	in mergeAlW . mergeConW $ addedObjW
+
+--these could all be a class, maybe
+
+addMergeObject :: Object a => World -> [a] -> ObjectA -> World
+addMergeObject wrld list objA = worldAObj ( mergeObject ( head . filter (((idn objA) ==) . idn) $ list ) objA ) wrld
+
+mergeAliveA :: World -> AliveA -> World
+mergeAliveA wrld alA = worldRObj (fromJust $ worldAppId wrld fn (idn alA) ) wrld
+	where
+		fn :: AliveA -> AliveA
+		fn = (\a -> mergeAlive a alA )
+
+mergeContainerA :: World -> ContainerA -> World
+mergeContainerA wrld conA = worldRObj (fromJust $ worldAppId wrld fn (idn conA) ) wrld
+	where
+		fn :: ContainerA -> ContainerA
+		fn = (\a -> mergeContainer a conA )
 
 --setThings wrld list = let clearW = foldr (\(ContainerA o) w -> setThings w $ emptyList o ) wrld list in  foldr (\(ContainerA o) w ->  (worldAObj o w) ) clearW list
 
@@ -323,8 +357,6 @@ instance Container AliveContainerA where
 	containerNames (AliveContainerA (a,b)) = containerNames b
 	locked (AliveContainerA (a,b)) = locked b
 
-instance WorldFold AliveContainerA where
-	anonObjects = \wrld -> map AliveContainerA $ intersectId (anonObjects wrld :: [AliveA]) (anonObjects wrld :: [ContainerA])
 	
 --here we should be given an ObjectA that matches idn 
 --we can then use this as part of setThings
@@ -335,7 +367,19 @@ mergeAliveContainer alCon c =
 	(\x -> setParent x (parent alCon)       ) .
 	(\x -> setLoc x    (loc    alCon)       ) $ c
 	
-	
+--it turns out it seems easier to have these as seperate functions
+mergeContainer :: (Container c,Container a) => a -> c -> c
+mergeContainer alCon c =
+	(\x -> setInventory x (inventory alCon) ) $ c
+
+mergeAlive :: (Alive c,Alive a) => a -> c -> c
+mergeAlive alCon c =
+	(\x -> setIntent x (intent alCon) ) $ c
+
+mergeObject :: (Object c,Object a) => a -> c -> c
+mergeObject alCon c =
+	(\x -> setParent x (parent alCon) ) .
+	(\x -> setLoc x    (loc    alCon) ) $ c
 
 \end{code}
 
