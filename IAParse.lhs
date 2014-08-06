@@ -174,6 +174,29 @@ eat2Arg f = \a b -> f
 eat3Arg f = \a b c -> f
 eat4Arg f = \a b c d -> f
 
+--What this does is go through all the possible combinations of input, where two words may refer to a single target
+--this will obviously start to choke on large input, we expect only 4-5 words max
+parseIntentCombination :: Object a => World -> a -> [String] -> Maybe Intent 
+parseIntentCombination wrld a input = msum $ map (parseIntent wrld a) (combInput input)
+
+
+combInput :: [String] -> [[String]]
+combInput [] = []
+combInput input = foldr fn [[last input]] (init input)
+	where
+		fn :: String -> [[String]] -> [[String]]
+		fn x xs = (map ([x] ++) xs) ++ ( map (appHead ((x ++) . (" " ++) )) xs)
+
+appHead _ [] = []
+appHead f (x:xs) = (f x) : xs
+
+-- [a,b,c,d] -> [[abcd],[abc,d],[ab,cd],[a,bcd],[ab,c,d],[a,bc,d],[a,b,cd],[a,b,c,d]]
+-- [a] -> [[a]]
+-- [a,b] -> [[a,b],[ab]]
+-- [a,b,c] -> [[a,b,c],[a,bc],[ab,c],[abc]]
+
+-- [a,b,c] -> [[a]] -> [[ba]],[[b,a]]-> [[cba],[c,ba],[cb,a],[c,b,a]]
+
 parseIntent :: Object a => World -> a -> [String] -> Maybe Intent
 parseIntent wrld a input = parseIntentArrow input ( preParsers <*> pure wrld <*> pure a ) []
 

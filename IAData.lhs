@@ -341,31 +341,6 @@ mergeContainerA wrld conA = worldRObj (fromJust $ worldAppId wrld fn (idn conA) 
 		fn :: ContainerA -> ContainerA
 		fn = (\a -> mergeContainer a conA )
 
---setThings wrld list = let clearW = foldr (\(ContainerA o) w -> setThings w $ emptyList o ) wrld list in  foldr (\(ContainerA o) w ->  (worldAObj o w) ) clearW list
-
-instance Alive AliveContainerA where
-	intent (AliveContainerA (a,b)) = intent a
-	setIntent (AliveContainerA (a,b)) = \i -> AliveContainerA (setIntent a i,b)
-	player (AliveContainerA (a,b)) = player a
-	
-instance Container AliveContainerA where
-	inventory (AliveContainerA (a,b)) = inventory b
-	setInventory (AliveContainerA (a,b)) = \i -> AliveContainerA $ (a,setInventory b i)
-	checkInventory (AliveContainerA (a,b)) = checkInventory b
-	capacity (AliveContainerA (a,b)) = capacity b
-	armSpan (AliveContainerA (a,b)) = armSpan b
-	containerNames (AliveContainerA (a,b)) = containerNames b
-	locked (AliveContainerA (a,b)) = locked b
-
-	
---here we should be given an ObjectA that matches idn 
---we can then use this as part of setThings
-mergeAliveContainer :: (Container c,Alive c) => AliveContainerA -> c -> c
-mergeAliveContainer alCon c =
-	(\x -> setInventory x (inventory alCon) ) .
-	(\x -> setIntent x (intent alCon)       ) .
-	(\x -> setParent x (parent alCon)       ) .
-	(\x -> setLoc x    (loc    alCon)       ) $ c
 	
 --it turns out it seems easier to have these as seperate functions
 mergeContainer :: (Container c,Container a) => a -> c -> c
@@ -380,6 +355,22 @@ mergeObject :: (Object c,Object a) => a -> c -> c
 mergeObject alCon c =
 	(\x -> setParent x (parent alCon) ) .
 	(\x -> setLoc x    (loc    alCon) ) $ c
+
+
+
+instance Alive AliveContainerA where
+	intent (AliveContainerA (a,b)) = intent a
+	setIntent (AliveContainerA (a,b)) = \i -> AliveContainerA (setIntent a i,b)
+	player (AliveContainerA (a,b)) = player a
+	
+instance Container AliveContainerA where
+	inventory (AliveContainerA (a,b)) = inventory b
+	setInventory (AliveContainerA (a,b)) = \i -> AliveContainerA $ (a,setInventory b i)
+	checkInventory (AliveContainerA (a,b)) = checkInventory b
+	capacity (AliveContainerA (a,b)) = capacity b
+	armSpan (AliveContainerA (a,b)) = armSpan b
+	containerNames (AliveContainerA (a,b)) = containerNames b
+	locked (AliveContainerA (a,b)) = locked b
 
 \end{code}
 
