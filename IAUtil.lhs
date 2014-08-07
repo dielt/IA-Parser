@@ -28,6 +28,8 @@ thd3 (_,_,x) = x
 head' = listToMaybe
 tail' xs = if null xs then Nothing else Just $ tail xs
 
+appHead _ [] = []
+appHead f (x:xs) = (f x) : xs
 
 listFstFilter :: [(Bool,a)] -> [a]
 listFstFilter xs = foldr (\x list -> if fst x then snd x : list else list ) [] xs

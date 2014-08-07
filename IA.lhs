@@ -9,9 +9,9 @@ import System.IO
 
 import Data.Char {-
 import Data.Maybe
-import Control.Applicative
-import Control.Monad -}
---import Control.Monad.Trans.State
+import Control.Applicative -}
+import Control.Monad
+import Control.Monad.Trans.State
 --import Graphics.UI.Gtk
 --import System.Environment
 --import Graphics.UI.SDL as SDL
@@ -65,6 +65,37 @@ yesNo = do
 eachLine :: (String -> String) -> (String -> String)
 eachLine f = unlines . map f . lines
 
+\end{code}
+
+
+
+We are having problem wherein we need both IO and State at the same time, 
+There are obvious solutions, but I think they just allow us to avoid restructuring our program
+Essentially the issue arises from yesNo, and storing sysEvents in the world
+I think a good solution is to checkSys immediatly after parsing
+
+
+\begin{code}
+
+gameLoop :: IO (State World String)
+gameLoop = do
+	input <- getInput
+	parseIntentCombination :: Object a => World -> a -> [String] -> Maybe Intent 
+	checkSys
+	return $ return ""
+
+--idk if this is the best way to do world as a state
+--or really if we ought to use state
+--also note True == continue False == Stop
+checkSys :: State World (IO Bool)
+checkSys = do
+	wrld <- get
+	clearSysEvent
+	return $
+		case sysEvent wrld of
+			Just Quit -> putStr "\nAre you sure you would like to quit?" >> yesNo
+			Just Help -> putStr "Todo Help" >> return False
+			Nothing   -> return False
 
 
 

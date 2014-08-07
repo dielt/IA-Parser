@@ -14,6 +14,7 @@ import IADataBase
 import IAData
 import IAPath
 import IASyn
+import IAUtil
 
 \end{code}
 
@@ -187,8 +188,6 @@ combInput input = foldr fn [[last input]] (init input)
 		fn :: String -> [[String]] -> [[String]]
 		fn x xs = (map ([x] ++) xs) ++ ( map (appHead ((x ++) . (" " ++) )) xs)
 
-appHead _ [] = []
-appHead f (x:xs) = (f x) : xs
 
 -- [a,b,c,d] -> [[abcd],[abc,d],[ab,cd],[a,bcd],[ab,c,d],[a,bc,d],[a,b,cd],[a,b,c,d]]
 -- [a] -> [[a]]
