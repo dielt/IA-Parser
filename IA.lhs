@@ -73,17 +73,58 @@ We are having problem wherein we need both IO and State at the same time,
 There are obvious solutions, but I think they just allow us to avoid restructuring our program
 Essentially the issue arises from yesNo, and storing sysEvents in the world
 I think a good solution is to checkSys immediatly after parsing
+However there is still the problem of the world requirement in iaParse
+
+It might be advantageous to seperate syntactic parsing, from a second validation stage.
+
+The idea being something like this, where we can recurse on this function until we have a non-empty Intent
+
+parseSyntax :: Object a => a -> String -> [Intent]
+
+
+
+
+
+
+
+Ahah, here is where State World comes in handy, though the current structure does not make use of it
+We can see how this allows for a more complicated and immediatly explicit strucuture than the previous linear loop of IO
+
 
 
 \begin{code}
 
-gameLoop :: IO (State World String)
+gameLoop :: State World (IO ())
 gameLoop = do
-	input <- getInput
-	parseIntentCombination :: Object a => World -> a -> [String] -> Maybe Intent 
-	checkSys
-	return $ return ""
+	get >>= put . doAction
+	wrld <- get
+	get >>= put . clearSysEvent
+	if sysEvent wrld == Just Quit
+		then return $ return ()
+		else gameLoop
 
+doAction :: World -> World
+doAction = id
+
+getPlayerIntent :: Alive a => a -> State World (IO (Maybe Intent))
+getPlayerIntent peep = get >>= return . fn
+	where
+		fn wrld = 
+			(getInput >>= \input -> return $ parseIntentCombination wrld peep input) >>= \intnt -> 
+				if intnt == Nothing 
+					then fn wrld 
+					else if intnt == Just (SysCom Quit)
+						then putStr "\nAre you sure you would like to quit?" >> yesNo >>= \response -> if response
+							then return (Just $ SysCom Quit)
+							else fn wrld
+						else return intnt
+\end{code}
+
+	
+This thing is problematic, it would be better to catch sysEvents on syntactic parsing of input
+
+\begin{code}
+{-
 --idk if this is the best way to do world as a state
 --or really if we ought to use state
 --also note True == continue False == Stop
@@ -96,7 +137,7 @@ checkSys = do
 			Just Quit -> putStr "\nAre you sure you would like to quit?" >> yesNo
 			Just Help -> putStr "Todo Help" >> return False
 			Nothing   -> return False
-
+-}
 
 
 

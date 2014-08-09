@@ -580,11 +580,8 @@ incTick = do --this is a terrible way to do things
 	put newWrld
 	return ()
 
-clearSysEvent :: State World ()
-clearSysEvent = do
-	wrld <- get
-	put $ wrld{sysEvent = Nothing}
-	return ()
+clearSysEvent :: World -> World
+clearSysEvent = \w -> w{sysEvent = Nothing}
 
 getId :: State World Id
 getId = do
