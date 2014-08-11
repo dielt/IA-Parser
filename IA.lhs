@@ -103,25 +103,32 @@ modify :: MonadState s m => (s -> s) -> m ()
 
 gameLoop :: StateT World IO ()
 gameLoop = do
-	doActions
+--	doActions
 	wrld <- get
-	get >>= put . clearSysEvent
+	modify clearSysEvent
 	if sysEvent wrld == Just Quit
 		then return ()
 		else gameLoop
 
---this is set up wrong, should be AliveA -> IO World -> IO World, with someway to extract.
+
 doActions :: StateT World IO ()
-doActions =
-	get >>= put . (\wrld -> worldFoldFilter wrld (player)       f1 wrld) >>
-	get >>= put . (\wrld -> worldFoldFilter wrld (not . player) f2 wrld)
+doActions = do
+	get >>= (\wrld -> stateTMerger2 . return $ worldFoldFilter wrld (player      ) f1 (return wrld))
+	get >>= (\wrld -> stateTMerger2 . return $ worldFoldFilter wrld (not . player) f2 (return wrld))
 		where
-			f1 :: AliveA -> World -> World
-			f2 :: AliveA -> World -> World
+			f1 :: AliveA -> IO World -> IO World
+			f2 :: AliveA -> IO World -> IO World
 			f1 a w = w
 			f2 a w = w
 
+--we plan to use this for type
+--fn :: StateT World IO World -> StateT World IO ()
+--But it is more generally of type
+stateTMerger :: Monad m => StateT a m a -> StateT a m ()
+stateTMerger = mapStateT (\a-> a >>= \a' -> return ((),fst a') )
 
+stateTMerger2 :: Monad m => StateT a m (m a) -> StateT a m ()
+stateTMerger2 = mapStateT (\a-> (join $ liftM fst a) >>= \a' -> return ((),a') )
 
 getPlayerIntent :: Alive a => a -> StateT World IO ()
 getPlayerIntent peep = get >>= fn
@@ -147,8 +154,8 @@ parseInput peep wrld =
 
 doAction :: Alive a => World -> a -> IO World
 doAction wrld peep = return wrld
-
 \end{code}
+
 
 	
 This thing is problematic, it would be better to catch sysEvents on syntactic parsing of input
