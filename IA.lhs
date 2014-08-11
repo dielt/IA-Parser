@@ -7,9 +7,9 @@ module IA where
 import System.IO 
 
 
-import Data.Char {-
+import Data.Char
 import Data.Maybe
-import Control.Applicative -}
+--import Control.Applicative -}
 import Control.Monad
 import Control.Monad.Trans.State
 --import Graphics.UI.Gtk
@@ -90,34 +90,64 @@ parseSyntax :: Object a => a -> String -> [Intent]
 Ahah, here is where State World comes in handy, though the current structure does not make use of it
 We can see how this allows for a more complicated and immediatly explicit strucuture than the previous linear loop of IO
 
+Actually I still am not convinced as to the utility of State here. We are still doing an awful lot of fiddling
 
+Of course this does allow us to more cleanly implement that sort of system check, without removing our ability to have a continious flow of changes.
+
+We have a problem however, of how we can have io affect the state it is within
+
+i.e. can we have a function IO World -> State World (IO())
+modify :: MonadState s m => (s -> s) -> m ()
 
 \begin{code}
 
-gameLoop :: State World (IO ())
+gameLoop :: StateT World IO ()
 gameLoop = do
-	get >>= put . doAction
+	doActions
 	wrld <- get
 	get >>= put . clearSysEvent
 	if sysEvent wrld == Just Quit
-		then return $ return ()
+		then return ()
 		else gameLoop
 
-doAction :: World -> World
-doAction = id
+--this is set up wrong, should be AliveA -> IO World -> IO World, with someway to extract.
+doActions :: StateT World IO ()
+doActions =
+	get >>= put . (\wrld -> worldFoldFilter wrld (player)       f1 wrld) >>
+	get >>= put . (\wrld -> worldFoldFilter wrld (not . player) f2 wrld)
+		where
+			f1 :: AliveA -> World -> World
+			f2 :: AliveA -> World -> World
+			f1 a w = w
+			f2 a w = w
 
-getPlayerIntent :: Alive a => a -> State World (IO (Maybe Intent))
-getPlayerIntent peep = get >>= return . fn
+
+
+getPlayerIntent :: Alive a => a -> StateT World IO ()
+getPlayerIntent peep = get >>= fn
 	where
-		fn wrld = 
-			(getInput >>= \input -> return $ parseIntentCombination wrld peep input) >>= \intnt -> 
-				if intnt == Nothing 
-					then fn wrld 
-					else if intnt == Just (SysCom Quit)
-						then putStr "\nAre you sure you would like to quit?" >> yesNo >>= \response -> if response
-							then return (Just $ SysCom Quit)
-							else fn wrld
-						else return intnt
+		fn :: World -> StateT World IO ()
+		fn wrld = return ()
+
+
+
+parseInput :: Alive a => a -> World -> IO Intent
+parseInput peep wrld = 
+	(getInput >>= \input -> return $ parseIntentCombination wrld peep input) >>= 
+		(\intnt -> 
+			if intnt == Nothing
+				then parseInput peep wrld
+				else if intnt == Just (SysCom Quit)
+					then putStr "\nAre you sure you would like to quit?" >> yesNo >>= \response -> if response
+						then return (SysCom Quit)
+						else parseInput peep wrld
+					else return $ fromJust intnt
+		)
+
+
+doAction :: Alive a => World -> a -> IO World
+doAction wrld peep = return wrld
+
 \end{code}
 
 	
