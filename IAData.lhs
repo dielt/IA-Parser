@@ -574,11 +574,9 @@ incId (Id x) = Id (x+1)
 incIdW wrld = let i = wrldId wrld in (i,wrld{wrldId = incId i})
 
 incTick :: State World ()
-incTick = do --this is a terrible way to do things
-	wrld <- get
-	let (t,newWrld) = (\w -> ((),w{tick = (tick w) + 1})) wrld 
-	put newWrld
-	return ()
+incTick = modify (\w -> w{tick = (tick w) + 1})
+
+
 
 clearSysEvent :: World -> World
 clearSysEvent = \w -> w{sysEvent = Nothing}

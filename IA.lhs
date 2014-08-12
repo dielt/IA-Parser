@@ -99,13 +99,19 @@ We have a problem however, of how we can have io affect the state it is within
 i.e. can we have a function IO World -> State World (IO())
 modify :: MonadState s m => (s -> s) -> m ()
 
+problem solved: stateTMerger/stateTMergerJoin
+
+Really the predominant advantage of State thus far, has been to force us to be overally strict about code structure.
+Which is of doubtful overall benefit, given the hoops it has posed to elicite that
+
 \begin{code}
 
 gameLoop :: StateT World IO ()
 gameLoop = do
---	doActions
+	doActions
 	wrld <- get
 	modify clearSysEvent
+	modify (\w -> w{tick = (tick w) + 1})
 	if sysEvent wrld == Just Quit
 		then return ()
 		else gameLoop
@@ -113,13 +119,20 @@ gameLoop = do
 
 doActions :: StateT World IO ()
 doActions = do
-	get >>= (\wrld -> stateTMerger2 . return $ worldFoldFilter wrld (player      ) f1 (return wrld))
-	get >>= (\wrld -> stateTMerger2 . return $ worldFoldFilter wrld (not . player) f2 (return wrld))
+	get >>= (\wrld -> stateTMergerJoin . return $ worldFoldFilter wrld (player      ) f1 (return wrld))
+	get >>= (\wrld -> stateTMergerJoin . return $ worldFoldFilter wrld (not . player) f2 (return wrld))
 		where
 			f1 :: AliveA -> IO World -> IO World
 			f2 :: AliveA -> IO World -> IO World
-			f1 a w = w
-			f2 a w = w
+			f1 a w = w >>= doActionPlayer a
+			f2 a w = w >>= doActionAI a
+
+--not done. I am also somewhat concerned about our dumping the whole State thing here. But what would be the alternative
+doActionPlayer :: AliveA -> World -> IO World
+doActionPlayer peep wrld = return wrld
+
+doActionAI :: AliveA -> World -> IO World
+doActionAI peep wrld = return wrld
 
 --we plan to use this for type
 --fn :: StateT World IO World -> StateT World IO ()
@@ -127,33 +140,38 @@ doActions = do
 stateTMerger :: Monad m => StateT a m a -> StateT a m ()
 stateTMerger = mapStateT (\a-> a >>= \a' -> return ((),fst a') )
 
-stateTMerger2 :: Monad m => StateT a m (m a) -> StateT a m ()
-stateTMerger2 = mapStateT (\a-> (join $ liftM fst a) >>= \a' -> return ((),a') )
-
-getPlayerIntent :: Alive a => a -> StateT World IO ()
-getPlayerIntent peep = get >>= fn
-	where
-		fn :: World -> StateT World IO ()
-		fn wrld = return ()
+--And similarly
+stateTMergerJoin :: Monad m => StateT a m (m a) -> StateT a m ()
+stateTMergerJoin = stateTMerger . stateTJoin -- mapStateT (\a-> (join $ liftM fst a) >>= \a' -> return ((),a') )
 
 
+stateTJoin :: Monad m => StateT a m (m b) -> StateT a m b
+stateTJoin = mapStateT (\a -> 
+	do
+		a' <- (join $ liftM fst a) 
+		b' <- liftM snd a
+		return (a',b')
+	)
 
-parseInput :: Alive a => a -> World -> IO Intent
-parseInput peep wrld = 
+
+stateTPlayerInput :: Alive a => a -> StateT World IO Intent
+stateTPlayerInput peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
+
+
+parsePlayerInput :: Alive a => a -> World -> IO Intent
+parsePlayerInput peep wrld = 
 	(getInput >>= \input -> return $ parseIntentCombination wrld peep input) >>= 
 		(\intnt -> 
 			if intnt == Nothing
-				then parseInput peep wrld
+				then parsePlayerInput peep wrld
 				else if intnt == Just (SysCom Quit)
 					then putStr "\nAre you sure you would like to quit?" >> yesNo >>= \response -> if response
 						then return (SysCom Quit)
-						else parseInput peep wrld
+						else parsePlayerInput peep wrld
 					else return $ fromJust intnt
 		)
 
 
-doAction :: Alive a => World -> a -> IO World
-doAction wrld peep = return wrld
 \end{code}
 
 
