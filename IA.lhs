@@ -111,7 +111,7 @@ gameLoop = do
 	doActions
 	wrld <- get
 	modify clearSysEvent
-	modify (\w -> w{tick = (tick w) + 1})
+	modify ( \w -> w {tick = (tick w)+1} )
 	if sysEvent wrld == Just Quit
 		then return ()
 		else gameLoop
@@ -119,20 +119,23 @@ gameLoop = do
 
 doActions :: StateT World IO ()
 doActions = do
-	get >>= (\wrld -> stateTMergerJoin . return $ worldFoldFilter wrld (player      ) f1 (return wrld))
-	get >>= (\wrld -> stateTMergerJoin . return $ worldFoldFilter wrld (not . player) f2 (return wrld))
-		where
-			f1 :: AliveA -> IO World -> IO World
-			f2 :: AliveA -> IO World -> IO World
-			f1 a w = w >>= doActionPlayer a
-			f2 a w = w >>= doActionAI a
+	get >>= ( \w -> worldFoldFilterStateT w player doActionPlayer )
+	get >>= ( \w -> worldFoldFilterStateT w (not . player) doActionAI )
+
+
+
 
 --not done. I am also somewhat concerned about our dumping the whole State thing here. But what would be the alternative
-doActionPlayer :: AliveA -> World -> IO World
-doActionPlayer peep wrld = return wrld
+doActionPlayer :: AliveA -> StateT World IO ()
+doActionPlayer peep = do
+	intent <- stateTPlayerInput peep
+	modify $ doAction peep intent
 
-doActionAI :: AliveA -> World -> IO World
-doActionAI peep wrld = return wrld
+doActionAI :: AliveA -> StateT World IO ()
+doActionAI peep = return ()
+
+doAction :: Alive a => a -> Intent -> World -> World
+doAction peep intnt wrld = wrld
 
 --we plan to use this for type
 --fn :: StateT World IO World -> StateT World IO ()

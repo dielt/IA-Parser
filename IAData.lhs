@@ -244,6 +244,8 @@ worldFold = \wrld f z -> worldFoldFilter wrld (\_ -> True) f z
 worldAppId :: Object c => World -> (c -> b) -> Id -> Maybe b
 worldAppId = \wrld f idt -> worldFoldFilter wrld (\x -> idn x == idt) (\a b -> Just $ f a) Nothing
 
+worldFoldFilterStateT :: (Object a, Monad m) => World -> (a -> Bool) -> (a -> StateT s m ()) -> StateT s m ()
+worldFoldFilterStateT wrld test f  = worldFoldFilter wrld test (\a _ -> f a) (modify id)
 	
 \end{code}
 
