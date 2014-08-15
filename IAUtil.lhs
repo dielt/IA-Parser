@@ -5,6 +5,8 @@ module IAUtil where
 
 
 import Data.Maybe
+import Control.Monad
+import Control.Monad.Trans.State
 
 \end{code}
 
@@ -60,6 +62,50 @@ checkThd3 :: Eq c => c -> [(a,b,c)] -> Bool
 checkThd3 a list = or $ map ((a ==) . thd3) list
 
 \end{code}
+
+
+
+All of our various stateT utility code, 
+there are probably library equivilents to some of these
+\begin{code}
+
+
+stateToStateT :: Monad m => State a b -> StateT a m b
+stateToStateT s = StateT $ \a -> return (evalState s a,a)
+
+--we plan to use this for type
+--fn :: StateT World IO World -> StateT World IO ()
+--But it is more generally of type
+stateTMerger :: Monad m => StateT a m a -> StateT a m ()
+stateTMerger = mapStateT (\a-> a >>= \a' -> return ((),fst a') )
+
+stateTFnMerger :: Monad m => (b -> a) -> StateT a m b -> StateT a m ()
+stateTFnMerger = stateTMerger .: liftM
+
+stateTMonadLift :: Monad m => m b -> StateT a m b
+stateTMonadLift = stateTJoin . return -- fnToStateT . const
+
+fnToStateT :: Monad m => (a -> m b) -> StateT a m b
+fnToStateT f = 
+	StateT $
+		\s -> f s >>= (
+			\mb -> return (mb,s) 
+		)
+
+--And similarly
+stateTMergerJoin :: Monad m => StateT a m (m a) -> StateT a m ()
+stateTMergerJoin = stateTMerger . stateTJoin -- mapStateT (\a-> (join $ liftM fst a) >>= \a' -> return ((),a') )
+
+stateTJoin :: Monad m => StateT a m (m b) -> StateT a m b
+stateTJoin = mapStateT (\a -> 
+	do
+		a' <- (join $ liftM fst a) 
+		b' <- liftM snd a
+		return (a',b')
+	)
+
+\end{code}
+
 
 
 

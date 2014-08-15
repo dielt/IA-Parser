@@ -61,7 +61,7 @@ yesNo = do
 				else putStr "Please input either yes or no." >> yesNo
 	
   
---forces a function to act per line on streaming input
+--forces a function to act per line on streaming textual input
 eachLine :: (String -> String) -> (String -> String)
 eachLine f = unlines . map f . lines
 
@@ -112,9 +112,9 @@ gameLoop = do
 	wrld <- get
 	modify clearSysEvent
 	modify ( \w -> w {tick = (tick w)+1} )
-	if sysEvent wrld == Just Quit
-		then return ()
-		else gameLoop
+	case sysEvent wrld of
+		Just Quit -> return ()
+		_         -> gameLoop
 
 
 doActions :: StateT World IO ()
@@ -123,42 +123,27 @@ doActions = do
 	get >>= ( \w -> worldFoldFilterStateT w (not . player) doActionAI )
 
 
-
-
---not done. I am also somewhat concerned about our dumping the whole State thing here. But what would be the alternative
 doActionPlayer :: AliveA -> StateT World IO ()
 doActionPlayer peep = do
 	intent <- stateTPlayerInput peep
-	modify $ doAction peep intent
+	wrld <- get --ugly
+	let wrld' = doAction peep intent wrld
+	if null . maybeToList $ wrld'
+		then doActionPlayer peep
+		else put $ fromJust wrld'
 
 doActionAI :: AliveA -> StateT World IO ()
 doActionAI peep = return ()
 
-doAction :: Alive a => a -> Intent -> World -> World
-doAction peep intnt wrld = wrld
-
---we plan to use this for type
---fn :: StateT World IO World -> StateT World IO ()
---But it is more generally of type
-stateTMerger :: Monad m => StateT a m a -> StateT a m ()
-stateTMerger = mapStateT (\a-> a >>= \a' -> return ((),fst a') )
-
---And similarly
-stateTMergerJoin :: Monad m => StateT a m (m a) -> StateT a m ()
-stateTMergerJoin = stateTMerger . stateTJoin -- mapStateT (\a-> (join $ liftM fst a) >>= \a' -> return ((),a') )
-
-
-stateTJoin :: Monad m => StateT a m (m b) -> StateT a m b
-stateTJoin = mapStateT (\a -> 
-	do
-		a' <- (join $ liftM fst a) 
-		b' <- liftM snd a
-		return (a',b')
-	)
+doAction :: Alive a => a -> Intent -> World -> Maybe World
+doAction peep intnt wrld = 
+	case intnt of 
+		SysCom x -> Just $ wrld{sysEvent=Just x}
+		_          -> Nothing
 
 
 stateTPlayerInput :: Alive a => a -> StateT World IO Intent
-stateTPlayerInput peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
+stateTPlayerInput = fnToStateT . parsePlayerInput  -- peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
 
 
 parsePlayerInput :: Alive a => a -> World -> IO Intent
@@ -178,7 +163,7 @@ parsePlayerInput peep wrld =
 \end{code}
 
 
-	
+
 This thing is problematic, it would be better to catch sysEvents on syntactic parsing of input
 
 \begin{code}
