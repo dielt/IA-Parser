@@ -7,6 +7,7 @@
 module IAData where
 
 import Data.Maybe
+import Data.Monoid
 import Data.List
 import Control.Monad.Trans.State
 import Control.Monad
@@ -82,7 +83,11 @@ This is the basic object managment code, note these delete the objects from the 
 \begin{code}
 
 worldAObj :: Object a => a -> World -> World
-worldAObj obj wrld = setThings wrld (obj : (things wrld))
+worldAObj obj wrld = (\w -> w{wrldInv= (idn obj) : (wrldInv w)}) $ setThings wrld (obj : (things wrld))
+
+worldAObjTest :: (Object a, Eq a) => a -> World -> Bool
+worldAObjTest obj wrld = let w = worldAObj obj wrld in
+	(elem (idn obj) (wrldInv w) ) && ( elem obj $ things w )
 
 --removes everything with a matching idt
 worldDObj :: Id -> World -> World
@@ -90,6 +95,10 @@ worldDObj idt wrld = worldFoldFilter wrld test (\obj w -> setThings w (delete ob
 	where
 		test :: ObjectA -> Bool
 		test = \o -> idn o == idt 
+
+worldDObjTest :: Id -> World -> Bool
+worldDObjTest idt wrld = let w = worldDObj idt wrld in
+	(not $ elem idt $ wrldInv w) && (not $ elem idt $ map idn ( things wrld :: [ObjectA] ) )
 
 worldRObj :: Object a => a -> World -> World
 worldRObj obj wrld = (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
@@ -240,13 +249,22 @@ worldFunction = \wrld f -> f . things $ wrld
 worldFoldFilter ::Object c => World -> (c -> Bool) -> (c -> b -> b) -> b -> b
 worldFoldFilter = \wrld test f z  -> foldr f z (filter test (things wrld))
 worldFold :: Object c => World -> (c -> b -> b) -> b -> b
-worldFold = \wrld f z -> worldFoldFilter wrld (\_ -> True) f z
+worldFold = \wrld f z -> worldFoldFilter wrld (const True) f z
 worldAppId :: Object c => World -> (c -> b) -> Id -> Maybe b
 worldAppId = \wrld f idt -> worldFoldFilter wrld (\x -> idn x == idt) (\a b -> Just $ f a) Nothing
 
 worldFoldFilterStateT :: (Object a, Monad m) => World -> (a -> Bool) -> (a -> StateT s m ()) -> StateT s m ()
-worldFoldFilterStateT wrld test f  = worldFoldFilter wrld test (\a _ -> f a) (modify id)
-	
+worldFoldFilterStateT wrld test f =  foldr (\a s -> (f $ a) >> s) (return ()) (filter test $ things wrld) -- liftM mconcat $ forM (filter test (things wrld)) f
+
+worldFoldFilterStateTTest :: StateT World IO ()
+worldFoldFilterStateTTest = 
+	let 
+		w = worldAObj (newPlayerId $ Id 0) newWorld 
+		fn :: ObjectA -> StateT World IO ()
+		fn o = stateTMonadLift $ putStrLn "TESTSUCCESS"
+	in
+		worldFoldFilterStateT w (const True) fn
+
 \end{code}
 
 
@@ -495,7 +513,10 @@ instance Alive Person where
 	setIntent = \p i -> p{pIntent=i}
 	player = pPlayer
 
-	
+instance Eq Person where
+	(==) a b =
+		(idn a) == (idn b)
+
 instance Object Bottle where
 	idn = bottleId
 	loc = bottleLoc
@@ -566,9 +587,6 @@ newWorld = World
 	,wrldInv = []
 	,sysEvent = Nothing
 	}
-	
-newWorldState :: State World ()
-newWorldState = put newWorld
 
 incId :: Id -> Id
 incId (Id x) = Id (x+1)
@@ -593,6 +611,20 @@ getId = do
 
 getIds = liftM2 (,) getId getId
 
+
+addPersonWorld :: State World ()
+addPersonWorld = do 
+	idt <- getId
+	wrld <- get
+	put $ worldAObj (newPersonId idt) wrld
+
+
+addPlayerWorld :: State World ()
+addPlayerWorld = do 
+	idt <- getId
+	wrld <- get
+	put $ worldAObj (newPlayerId idt) wrld
+	return ()
 
 newPersonWorld :: State World Person
 newPersonWorld = getId >>= (return . newPersonId)

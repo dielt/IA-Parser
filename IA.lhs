@@ -83,6 +83,22 @@ parseSyntax :: Object a => a -> String -> [Intent]
 
 
 
+\begin{code}
+
+main :: IO ()
+main = evalStateT prepWorld newWorld
+
+prepWorld :: StateT World IO ()
+prepWorld = do
+	stateToStateT addPlayerWorld
+	get >>= (\wrld -> if null (things wrld :: [ObjectA]) then stateTMonadLift $ putStr "test2" else stateTMonadLift $ putStr "test3")
+	get >>= (\w -> worldFoldFilterStateT w (const True) fn )
+	prepWorld
+		where
+			fn :: AliveA -> StateT World IO ()
+			fn = const $ stateTMonadLift $ putStr "test1"
+\end{code}
+
 
 
 
@@ -103,6 +119,7 @@ problem solved: stateTMerger/stateTMergerJoin
 
 Really the predominant advantage of State thus far, has been to force us to be overally strict about code structure.
 Which is of doubtful overall benefit, given the hoops it has posed to elicite that
+
 
 \begin{code}
 
@@ -133,7 +150,8 @@ doActionPlayer peep = do
 		else put $ fromJust wrld'
 
 doActionAI :: AliveA -> StateT World IO ()
-doActionAI peep = return ()
+doActionAI peep = do
+	return ()
 
 doAction :: Alive a => a -> Intent -> World -> Maybe World
 doAction peep intnt wrld = 
