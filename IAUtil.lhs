@@ -71,7 +71,7 @@ there are probably library equivilents to some of these
 
 
 stateToStateT :: Monad m => State a b -> StateT a m b
-stateToStateT s = StateT $ \a -> return (evalState s a,a)
+stateToStateT s = StateT $ \a -> return $ runState s a
 
 --we plan to use this for type
 --fn :: StateT World IO World -> StateT World IO ()

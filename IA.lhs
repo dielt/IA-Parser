@@ -91,12 +91,8 @@ main = evalStateT prepWorld newWorld
 prepWorld :: StateT World IO ()
 prepWorld = do
 	stateToStateT addPlayerWorld
-	get >>= (\wrld -> if null (things wrld :: [ObjectA]) then stateTMonadLift $ putStr "test2" else stateTMonadLift $ putStr "test3")
-	get >>= (\w -> worldFoldFilterStateT w (const True) fn )
-	prepWorld
-		where
-			fn :: AliveA -> StateT World IO ()
-			fn = const $ stateTMonadLift $ putStr "test1"
+	gameLoop
+	
 \end{code}
 
 
