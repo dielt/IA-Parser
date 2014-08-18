@@ -34,20 +34,7 @@ import IADataBase
 
 
 
-
-
-Some basic functions rescued
-
 \begin{code}
-
-getInput :: IO [String]
-getInput = --hFlush ensures that we print the prompt before getLine
-	putStr "\n>" >> hFlush stdout >>	getLine >>= 
-	(\x -> let y = (filter (not . flip elem fillerWords ) ) . words . (map toLower) $ x in 
-		if null y 
-			then getInput 
-			else return y
-	)
 
 yesNo :: IO Bool
 yesNo = do
@@ -59,11 +46,17 @@ yesNo = do
 			else if elem (head input) negSyn
 				then return False
 				else putStr "Please input either yes or no." >> yesNo
-	
-  
---forces a function to act per line on streaming textual input
-eachLine :: (String -> String) -> (String -> String)
-eachLine f = unlines . map f . lines
+
+
+
+getInput :: IO [String]
+getInput = --hFlush ensures that we print the prompt before getLine
+	putStr "\n>" >> hFlush stdout >>	getLine >>= 
+	(\x -> let y = (filter (not . flip elem fillerWords ) ) . words . (map toLower) $ x in 
+		if null y 
+			then getInput 
+			else return y
+	)
 
 \end{code}
 
@@ -127,8 +120,10 @@ gameLoop = do
 	modify ( \w -> w {tick = (tick w)+1} )
 	case sysEvent wrld of
 		Just Quit -> return ()
+		Just Help -> do
+			stateTMonadLift $ putStrLn "Help: TODO"  
+			gameLoop
 		_         -> gameLoop
-
 
 doActions :: StateT World IO ()
 doActions = do

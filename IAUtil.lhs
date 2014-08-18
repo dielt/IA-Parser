@@ -65,6 +65,23 @@ checkThd3 a list = or $ map ((a ==) . thd3) list
 
 
 
+\begin{code}
+
+	
+  
+--forces a function to act per line on streaming textual input
+eachLine :: (String -> String) -> (String -> String)
+eachLine f = unlines . map f . lines
+
+
+
+
+\end{code}
+
+
+
+
+
 All of our various stateT utility code, 
 there are probably library equivilents to some of these
 \begin{code}
