@@ -28,7 +28,22 @@ data RelDirection = In | Out | On | Below deriving (Eq, Show)
 
 data Direction = Rel RelDirection | Abs AbsDirection deriving (Eq, Show)
 
-data SysIntent = Quit | Help | VerNum | Setting deriving (Eq,Show)
+data SysIntent = Quit | Help | VerNum | Setting SysSetting  deriving (Eq,Show)
+
+data Settings = Volume | Difficulty deriving (Eq,Show) 
+
+data SysSetting = SysSetting (Int,Settings)  deriving (Eq,Show)
+
+checkSetting :: [SysSetting] -> Settings -> Int
+checkSetting list s = foldr (\(SysSetting (b,c)) a -> if c == s then b else a ) (-1) list
+
+getSetting = (\(SysSetting (b,c))-> c)
+
+changeSetting :: [SysSetting] -> SysSetting -> [SysSetting]
+changeSetting list sett =
+	if elem (getSetting sett) $ map (\(SysSetting (b,c)) -> c) list 
+		then  foldr (\a list' -> if (getSetting a) == (getSetting sett) then sett : list' else a : list' ) [] list
+		else sett : list
 
 data Intent = SysCom SysIntent | Move Target | Get Id | Look Target deriving (Eq,Show)
 

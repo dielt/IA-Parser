@@ -148,8 +148,12 @@ doAction :: Alive a => a -> Intent -> World -> Maybe World
 doAction peep intnt wrld = 
 	case intnt of 
 		SysCom x -> Just $ wrld{sysEvent=Just x}
-		_          -> Nothing
+		Move x   -> doMove wrld peep x
+		_        -> Nothing
 
+doMove :: Alive a => World -> a -> Target -> Maybe World
+doMove wrld peep (Tar Nothing tarId) = return wrld
+doMove wrld peep (Tar (Just tarDir) tarId) = return wrld
 
 stateTPlayerInput :: Alive a => a -> StateT World IO Intent
 stateTPlayerInput = fnToStateT . parsePlayerInput  -- peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
