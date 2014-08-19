@@ -1,0 +1,26 @@
+Notes
+
+I feel we have left the problem of worldFolds Unresolved, being how can we deal with a living nonContainer attempting to carry something.
+
+Essentially we want different behaviour of the doAction Function based on the constraints satisfied by a given object
+
+i.e. 
+
+doGet :: World
+
+Or rather, it might be better for us, given that we are separating lexer from parser. To create actions as sourced
+
+i.e. Action = Target TokenCollection 
+
+where Target is the source actor, with the idea that we can then check for constraint via worldFolding to find the source, failure means failure on constraint.
+
+
+
+
+
+
+
+
+
+
+

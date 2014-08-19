@@ -52,7 +52,7 @@ class Object o where
 
 data ObjectA = forall a.  Object a => ObjectA a
 
---note Cannot derive Eq due to non haskell 98 complience.
+--note Cannot derive Eq due to non Haskell 98 compliance.
 instance Eq ObjectA where
 	(==) a b = 
 		if idn a == idn b 
