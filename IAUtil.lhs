@@ -7,6 +7,9 @@ module IAUtil where
 import Data.Maybe
 import Control.Monad
 import Control.Monad.Trans.State
+import qualified Control.Category as C
+import Control.Monad
+import Control.Applicative
 
 \end{code}
 
@@ -26,6 +29,16 @@ fst3 (x,_,_) = x
 snd3 (_,x,_) = x
 thd3 (_,_,x) = x
 
+if' :: Bool -> a -> a -> a
+if' True  x _ = x
+if' False _ y = y
+
+--I don't think the type system will allow for a generalized version
+eat1Arg f = \a -> f
+eat2Arg f = \a b -> f
+eat3Arg f = \a b c -> f
+eat4Arg f = \a b c d -> f
+
 
 head' = listToMaybe
 tail' xs = if null xs then Nothing else Just $ tail xs
@@ -35,6 +48,7 @@ appHead f (x:xs) = (f x) : xs
 
 listFstFilter :: [(Bool,a)] -> [a]
 listFstFilter xs = foldr (\x list -> if fst x then snd x : list else list ) [] xs
+
 
 --again I assume that there is a prelude function for this
 deleteAll :: Eq a => a -> [a] -> [a]
@@ -62,6 +76,7 @@ checkThd3 :: Eq c => c -> [(a,b,c)] -> Bool
 checkThd3 a list = or $ map ((a ==) . thd3) list
 
 \end{code}
+
 
 
 
@@ -100,7 +115,7 @@ stateTFnMerger :: Monad m => (b -> a) -> StateT a m b -> StateT a m ()
 stateTFnMerger = stateTMerger .: liftM
 
 stateTMonadLift :: Monad m => m b -> StateT a m b
-stateTMonadLift = stateTJoin . return -- fnToStateT . const
+stateTMonadLift = stateTJoin . return --equiv to, fnToStateT . const
 
 fnToStateT :: Monad m => (a -> m b) -> StateT a m b
 fnToStateT f = 
@@ -122,6 +137,96 @@ stateTJoin = mapStateT (\a ->
 	)
 
 \end{code}
+
+
+
+
+
+
+
+Basic Circuit code
+
+
+nb. chainCir == (.) from Category, Thus
+As near as I can tell: (liftCir f) `chainCir` (liftCir g) == liftCir (f . g)
+Which means: (liftCir id) `chainCir` (liftCir f) == liftCir (id f) == liftCir f
+I.e. (liftCir id) forms the identity of the monoid over chainCir
+
+
+\begin{code}
+
+
+newtype Circuit a b = Circuit 
+	{unCircuit :: a -> ([Circuit a b], b)
+	}
+--preliminary arr def
+liftCir :: (a -> b) -> Circuit a b
+liftCir f =  Circuit $ \a -> ([],f a)
+
+--so First arguement is the first string
+liftCir2 :: MonadPlus m => (a -> a -> (m b)) -> Circuit a (m b)
+liftCir2 f  = Circuit $ \a -> ([liftCir (f a)],mzero)
+
+liftCir3 :: MonadPlus m => (a -> a -> a ->  (m b)) -> Circuit a (m b)
+liftCir3 f  = Circuit $ \a -> ([liftCir2 (f a)],mzero)
+
+liftCirN :: MonadPlus m => Int -> ([a] -> (m b)) -> Circuit a (m b)
+liftCirN n f 
+	| n <  1 = liftCir $ const mzero
+	| n == 1 = Circuit $ \a -> ([],f [a])
+	| n >  1 = Circuit $ \a -> ([liftCirN (n-1) (\xs -> f (a : xs) ) ],mzero)
+
+chainCir :: Circuit b c -> Circuit a b -> Circuit a c
+chainCir cir2 cir1 =
+	Circuit $ \a ->
+		let
+			(cir1',b) = unCircuit cir1 $ a
+			(cir2',c) = unCircuit cir2 $ b
+		in (liftA2 chainCir cir2' cir1',c)
+--
+
+--This adds a Circuit to the list of returned Circuits
+appendCir :: Circuit a b -> Circuit a b -> Circuit a b
+appendCir cir2 cir1 = 
+	Circuit $ \a -> 
+		let (cir1',b) = (unCircuit cir1) $ a 
+		in (cir2 : cir1',b)
+-- i.e. cir2 `appendCir` cir1 adds cir2 to cir1
+
+--This combines two parsers into one applied simultaniusly, using mplus
+combineCir :: MonadPlus m => Circuit a (m b) -> Circuit a (m b) -> Circuit a (m b)
+combineCir cir1 cir2 = 
+	Circuit $ \a ->
+		let 
+			(cir1',b1) = (unCircuit cir1) $ a 
+			(cir2',b2) = (unCircuit cir2) $ a
+		in ( mplus cir1' cir2' , mplus b1 b2 ) --nb mplus == (++) in the second case.
+
+--This combines n parsers into one, generalizing combineCir
+combineNCir :: MonadPlus m => [Circuit a (m b)] -> Circuit a (m b)
+combineNCir circuits =
+	Circuit $ \a ->
+		let
+			circuits' = msum . (map fst) $ (map unCircuit circuits) <*> (pure a)
+			b'        = msum . (map snd) $ (map unCircuit circuits) <*> (pure a)
+		in (circuits',b')
+
+
+applyCircuits circs obj = unCircuit (combineNCir circs) $ obj
+
+
+instance C.Category Circuit where
+	id = liftCir id
+	(.)= chainCir
+
+
+
+
+\end{code}
+
+
+
+
 
 
 

@@ -28,7 +28,7 @@ data RelDirection = In | Out | On | Below deriving (Eq, Show)
 
 data Direction = Rel RelDirection | Abs AbsDirection deriving (Eq, Show)
 
-data SysIntent = Quit | Help | VerNum | Setting SysSetting  deriving (Eq,Show)
+data SysIntent = Quit | Help | VerNum | Setting  deriving (Eq,Show)
 
 data Settings = Volume | Difficulty deriving (Eq,Show) 
 

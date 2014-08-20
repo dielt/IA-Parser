@@ -63,48 +63,16 @@ And also the importance of the multiple ways of combining parsers
 \begin{code}
 type Parser = Circuit String (Maybe Intent)
 
-newtype Circuit a b = Circuit 
-	{unCircuit :: a -> ([Circuit a b], b)
-	}
-
 pZero :: Parser
 pZero = Circuit $ \a -> ([],Nothing)
 
---preliminary arr def
-liftCir :: (a -> b) -> Circuit a b
-liftCir f =  Circuit $ \a -> ([],f a)
-
---so First arguement is the first string
-liftCir2 :: MonadPlus m => (a -> a -> (m b)) -> Circuit a (m b)
-liftCir2 f  = Circuit $ \a -> ([liftCir (f a)],mzero)
-
-liftCir3 :: MonadPlus m => (a -> a -> a ->  (m b)) -> Circuit a (m b)
-liftCir3 f  = Circuit $ \a -> ([liftCir2 (f a)],mzero)
 \end{code}
 
 There should be some way to construct higher order lifts in general.
 liftCir3b :: MonadPlus m => (a -> a -> a ->  (m b)) -> Circuit a (m b)
 liftCir3b f  = $ flip (unCircuit . liftCir2) $ f
 
-nb. chainCir == (.) from Category, Thus
-As near as I can tell: (liftCir f) `chainCir` (liftCir g) == liftCir (f . g)
-Which means: (liftCir id) `chainCir` (liftCir f) == liftCir (id f) == liftCir f
-I.e. (liftCir id) forms the identity of the monoid over chainCir
-
 \begin{code}
-chainCir :: Circuit b c -> Circuit a b -> Circuit a c
-chainCir cir2 cir1 =
-	Circuit $ \a ->
-		let
-			(cir1',b) = unCircuit cir1 $ a
-			(cir2',c) = unCircuit cir2 $ b
-		in (liftA2 chainCir cir2' cir1',c)
---
-
-instance C.Category Circuit where
-	id = liftCir id
-	(.)= chainCir
-
 \end{code}
 
 Instance Arrow Circuit where
@@ -119,34 +87,6 @@ There are so many differant ways to chain circuits and I am not sure what the re
 
 
 \begin{code}
-
---This adds a Circuit to the list of returned Circuits
-appendCir :: Circuit a b -> Circuit a b -> Circuit a b
-appendCir cir2 cir1 = 
-	Circuit $ \a -> 
-		let (cir1',b) = (unCircuit cir1) $ a 
-		in (cir2 : cir1',b)
--- i.e. cir2 `appendCir` cir1 adds cir2 to cir1
-
---This combines two parsers into one applied simultaniusly, using mplus
-combineCir :: MonadPlus m => Circuit a (m b) -> Circuit a (m b) -> Circuit a (m b)
-combineCir cir1 cir2 = 
-	Circuit $ \a ->
-		let 
-			(cir1',b1) = (unCircuit cir1) $ a 
-			(cir2',b2) = (unCircuit cir2) $ a
-		in ( mplus cir1' cir2' , mplus b1 b2 ) --nb mplus == (++) in the second case.
-
---This combines n parsers into one, generalizing combineCir
-combineNCir :: MonadPlus m => [Circuit a (m b)] -> Circuit a (m b)
-combineNCir circuits =
-	Circuit $ \a ->
-		let
-			circuits' = msum . (map fst) $ (map unCircuit circuits) <*> (pure a)
-			b'        = msum . (map snd) $ (map unCircuit circuits) <*> (pure a)
-		in (circuits',b')
-
-applyCircuits circs obj = unCircuit (combineNCir circs) $ obj
 
 \end{code}
 
@@ -168,12 +108,6 @@ makeParser2 f = \wrld obj -> Circuit $ f wrld obj
 
 
 \begin{code}
-
---I don't think the type system will allow for a generalized version
-eat1Arg f = \a -> f
-eat2Arg f = \a b -> f
-eat3Arg f = \a b c -> f
-eat4Arg f = \a b c d -> f
 
 --What this does is go through all the possible combinations of input, where two words may refer to a single target
 --this will obviously start to choke on large input, we expect only 4-5 words max

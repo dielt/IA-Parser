@@ -1,6 +1,10 @@
 \begin{code}
 module IALexer where
 
+import IADataBase
+import IASyn
+import IAUtil
+
 \end{code}
 
 Ok so this file is going to be the replacement for the first stage of our parser
@@ -26,16 +30,42 @@ and some way of tokenizing actions.
 the initial solution to actions would be some sort of class. i.e. 
 
 class Intent a where
-	doIntent :: Alive b => World -> b -> a -> World
-	intent :: Token
+	doIntent :: World -> Id -> a -> World
+	intent :: String/Token
 
-Though there is a problem wherein we may want to enforce ceratain additional constraints.
+or something, the key here is that we can implicitly enforce any constraint 
+based on failure of the worldAppId used with the source id provided
 
-i.e. 
+What would be really neat is if we could allow for instances of Intent to be declared in seperate files
+Combined prerequisite ability to <partially> define syntax for Tokens and we could essentially allow for
+User modifiable Actions, i.e. a simple language which allows for interactions within the world.
 
-class Intent a c | a -> c where
-	doIntent (Alive b, c b) => World -> b -> a -> World
-	intent :: Token
 
-or really the problem here is going to be in worldFold
+Note it is important to keep in mind two things, ideally a token should be the minimum parsable syntax
+However it is even more important that we do not allow World or similar to sneak in.
+
+
+\begin{code}
+
+data Token = Affirm Bool | Name String | Action Intent [Token] | Relation Direction deriving (Eq,Show)
+
+type TokenCollection = [[Token]]
+
+type Lexer = Circuit String (Maybe Token)
+
+yesNoLexer :: Lexer
+yesNoLexer = liftCir $ \str ->
+	if' (elem str affirmSyn) (Just $ Affirm True) $
+	if' (elem str negSyn)    (Just $ Affirm False) $
+	Nothing
+	
+sysEventLexer :: Lexer
+sysEventLexer = liftCir $ \str -> 
+	if' (elem str quitSyn) (Just $ Action (SysCom Quit) [] ) $
+	if' (elem str helpSyn) (Just $ Action (SysCom Help) []) $
+	Nothing
+
+
+
+\end{code}
 
