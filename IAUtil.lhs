@@ -13,6 +13,8 @@ import Control.Applicative
 
 \end{code}
 
+We can alway split this up into seperate files
+e.g. IAStateT IACircuit or similar
 
 Basic utility stuff,
 
@@ -32,6 +34,12 @@ thd3 (_,_,x) = x
 if' :: Bool -> a -> a -> a
 if' True  x _ = x
 if' False _ y = y
+
+--sort of like guard or when but with values
+ifM :: MonadPlus m => Bool -> m a -> m a
+ifM True  x = x
+ifM False _ = mzero 
+
 
 --I don't think the type system will allow for a generalized version
 eat1Arg f = \a -> f
@@ -170,11 +178,13 @@ liftCir2 f  = Circuit $ \a -> ([liftCir (f a)],mzero)
 liftCir3 :: MonadPlus m => (a -> a -> a ->  (m b)) -> Circuit a (m b)
 liftCir3 f  = Circuit $ \a -> ([liftCir2 (f a)],mzero)
 
+--This needs testing, It should be that first is first.
 liftCirN :: MonadPlus m => Int -> ([a] -> (m b)) -> Circuit a (m b)
 liftCirN n f 
 	| n <  1 = liftCir $ const mzero
 	| n == 1 = Circuit $ \a -> ([],f [a])
 	| n >  1 = Circuit $ \a -> ([liftCirN (n-1) (\xs -> f (a : xs) ) ],mzero)
+
 
 chainCir :: Circuit b c -> Circuit a b -> Circuit a c
 chainCir cir2 cir1 =

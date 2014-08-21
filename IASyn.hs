@@ -121,5 +121,13 @@ invSyn =
 	,"inventory"
 	,"inv"
 	]
-
+settingSyn = 
+	["settings"
+	,"setting"
+	,"sett"
+	]
+versionSyn =
+	["version"
+	,"ver"
+	]
 
