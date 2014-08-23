@@ -82,7 +82,18 @@ However we want to avoid lexing things twice.
 
 Perhaps it would be better to have a node be Token and the [String] remaining
 
-In this way our function 
+ok so the forest builder is working now. We now have to return to our previous issue of distinguishing between various parses
+
+The problem of partial parsing is somwhat mitigated by our nameLexer, because it always returns
+
+So we don't need to worry about a tree no containing all the letters. 
+
+Really the main limitation I see still is our dependancy on a new word to change behavior.
+
+i.e. 'move' can only be parsed as (Name 'move') and if we wanted it to default to MoveT Here say, then
+we would have issues with 'move','north' becoming (MoveT Here),(Name 'north').
+
+I suppose we could rely on the same solution as always, i.e. recognizing the problem case above as jibberish in later parsing.
 
 
 \begin{code}
@@ -110,27 +121,28 @@ allBaseLexers =
 
 
 \begin{code}
---I still am not pleased with how we actually build the tree
-buildLexedTree :: [String] -> Tree [Token]
-buildLexedTree = unfoldTree applyLexer2
 
-applyLexer2 :: [String] -> ([Token],[[String]])
-applyLexer2 input = let x = applyLexers1 input allBaseLexers in 
-	(fst $ unzip x , snd $ unzip x )
+--now we just need to assemble the tree
+
+unfoldForest2 :: (b -> [(a,b)]) -> b -> [Tree a]
+unfoldForest2 f z = map (\(a,b) -> Node {rootLabel=a,subForest= unfoldForest2 f b} ) (f z)
+
+buildLexForest :: [String] -> [Tree Token]
+buildLexForest = unfoldForest2 (applyLexers allBaseLexers)
 
 --this seems to work
-applyLexers1 :: [String] -> [Lexer] -> [(Token,[String])]
-applyLexers1 [] _ = []
-applyLexers1 input lexers = join $ map (applyLexer1 input) lexers
+applyLexers ::  [Lexer] -> [String] -> [(Token,[String])]
+applyLexers [] _ = []
+applyLexers lexers input = join $ map (applyLexer input) lexers
 
 --applyLexer [String] -> Lexer  
 
-applyLexer1 :: [String] -> Lexer -> [(Token,[String])]
-applyLexer1 [] _ = []
-applyLexer1 input lex = let (lexers,tokens) = unCircuit lex $ head input in
+applyLexer :: [String] -> Lexer -> [(Token,[String])]
+applyLexer [] _ = []
+applyLexer input lex = let (lexers,tokens) = unCircuit lex $ head input in
 	if null lexers
 		then map (\a -> (a,tail input)) tokens
-		else applyLexers1 (tail input) lexers
+		else applyLexers lexers (tail input)
 
 \end{code}
 
