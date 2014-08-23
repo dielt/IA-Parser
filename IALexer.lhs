@@ -70,21 +70,34 @@ It is obviously not going to matter much how we deal with only single word lexer
 
 The problem comes up with multiworld lexer, i.e., we can parse get in as MoveT (Rel In) or as GetT (Name "in") 
 
-where we are going to 
+What I want is to build a tree, forest rather, where each node is a single token
+
+we begin with allBaseLexers, they are applied to the first word
+
+if we are returned any lexers then they are applied to the second word, and so on
+
+once we run out of lexers we now have our full initial layer
+
+However we want to avoid lexing things twice. 
+
+Perhaps it would be better to have a node be Token and the [String] remaining
+
+In this way our function 
+
 
 \begin{code}
 
 
 data ActionToken = MoveT | GetT | LookT | SysComT SysIntent deriving (Eq,Show)
 
-data Token = Affirm Bool | Name String | Action ActionToken [Token] | Relation Direction deriving (Eq,Show)
+data Token = Affirm Bool | Name String | Action ActionToken [Token] | DirT Direction deriving (Eq,Show)
 
 type TokenCollection = [[Token]]
 
 type Lexer = Circuit String ([Token])
 
-allBaseLexers :: Lexer
-allBaseLexers = combineNCir
+allBaseLexers :: [Lexer]
+allBaseLexers =
 	[yesNoLexer
 	,sysEventLexer
 	,actionGetLexer
@@ -92,6 +105,32 @@ allBaseLexers = combineNCir
 	,actionLookLexer
 	,nameLexer
 	]
+
+\end{code}
+
+
+\begin{code}
+--I still am not pleased with how we actually build the tree
+buildLexedTree :: [String] -> Tree [Token]
+buildLexedTree = unfoldTree applyLexer2
+
+applyLexer2 :: [String] -> ([Token],[[String]])
+applyLexer2 input = let x = applyLexers1 input allBaseLexers in 
+	(fst $ unzip x , snd $ unzip x )
+
+--this seems to work
+applyLexers1 :: [String] -> [Lexer] -> [(Token,[String])]
+applyLexers1 [] _ = []
+applyLexers1 input lexers = join $ map (applyLexer1 input) lexers
+
+--applyLexer [String] -> Lexer  
+
+applyLexer1 :: [String] -> Lexer -> [(Token,[String])]
+applyLexer1 [] _ = []
+applyLexer1 input lex = let (lexers,tokens) = unCircuit lex $ head input in
+	if null lexers
+		then map (\a -> (a,tail input)) tokens
+		else applyLexers1 (tail input) lexers
 
 \end{code}
 
@@ -127,45 +166,45 @@ actionGetLexer :: Lexer
 actionGetLexer = combineNCir --lots of repetition here idk what is doable
 	[liftCir2 $ \str1 str2 -> ifM (elem str1 getSyn) (return $ Action GetT [(Name str2)]) --get x 
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn)) 
-		(return $ Action GetT [(Name str2),(Relation $ Rel In),(Name str3)] ) --get x in y
+		(return $ Action GetT [(Name str2),(DirT $ Rel In),(Name str3)] ) --get x in y
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 onSyn)) 
-		(return $ Action GetT [(Name str2),(Relation $ Rel On),(Name str3)] ) --get x on y
+		(return $ Action GetT [(Name str2),(DirT $ Rel On),(Name str3)] ) --get x on y
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 belowSyn)) 
-		(return $ Action GetT [(Name str2),(Relation $ Rel Below),(Name str3)] ) --get x below y
+		(return $ Action GetT [(Name str2),(DirT $ Rel Below),(Name str3)] ) --get x below y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn) && (elem str4 inSyn))
-		(return $ Action GetT [(Name str2),(Relation $ Rel In),(Name str3)] ) --get x from in y -> get x in y
+		(return $ Action GetT [(Name str2),(DirT $ Rel In),(Name str3)] ) --get x from in y -> get x in y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 onSyn) && (elem str4 onSyn))
-		(return $ Action GetT [(Name str2),(Relation $ Rel On),(Name str3)] ) --get x from on y -> get x on y
+		(return $ Action GetT [(Name str2),(DirT $ Rel On),(Name str3)] ) --get x from on y -> get x on y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn) && (elem str4 belowSyn)) --first 'inSyn' is intentional
-		(return $ Action GetT [(Name str2),(Relation $ Rel Below),(Name str3)] ) --get x from below y -> get x below y
+		(return $ Action GetT [(Name str2),(DirT $ Rel Below),(Name str3)] ) --get x from below y -> get x below y
 	]
 
 --I am still concerned about how we interpret various parses, especially to do with this first result
 actionMoveLexer :: Lexer
 actionMoveLexer = combineNCir 
-	[liftCirN 2 $ \(str1:str2:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [Relation dir] ))
-	,liftCirN 3 $ \(str1:str2:str3:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [(Relation dir),(Name str3)] ))
-	] -- liftCir $ dirLexer >=> (\dir -> Just $ Action MoveT [Relation dir] ) --i.e. is this too presumptive?, should it only be the second
+	[liftCirN 2 $ \(str1:str2:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [DirT dir] ))
+	,liftCirN 3 $ \(str1:str2:str3:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [(DirT dir),(Name str3)] ))
+	] -- liftCir $ dirLexer >=> (\dir -> Just $ Action MoveT [DirT dir] ) --i.e. is this too presumptive?, should it only be the second
 
 actionLookLexer :: Lexer
 actionLookLexer = combineNCir
-	[liftCirN 2  $ \(str1:str2:xs) -> ifM (elem str1 lookSyn) (dirFn str2 >>= (\dir -> return $ Action LookT [Relation dir]))
+	[liftCirN 2  $ \(str1:str2:xs) -> ifM (elem str1 lookSyn) (dirFn str2 >>= (\dir -> return $ Action LookT [DirT dir]))
 	]
 
 
 dirLexer:: Lexer
 dirLexer = liftCir $ \str -> msum $
-	[ifM (elem str inSyn) (return $ Relation $ Rel In)
-	,ifM (elem str outSyn) (return $ Relation $ Rel Out)
-	,ifM (elem str onSyn) (return $ Relation $ Rel On)
-	,ifM (elem str belowSyn) (return $ Relation $ Rel Below)
-	,ifM (elem str northSyn) (return $ Relation $ Abs North)
-	,ifM (elem str southSyn) (return $ Relation $ Abs South)
-	,ifM (elem str eastSyn) (return $ Relation $ Abs East)
-	,ifM (elem str westSyn) (return $ Relation $ Abs West)
-	,ifM (elem str downSyn) (return $ Relation $ Abs Down)
-	,ifM (elem str upSyn) (return $ Relation $ Abs Up)
-	,ifM (elem str hereSyn) (return $ Relation $ Abs Here)
+	[ifM (elem str inSyn) (return $ DirT $ Rel In)
+	,ifM (elem str outSyn) (return $ DirT $ Rel Out)
+	,ifM (elem str onSyn) (return $ DirT $ Rel On)
+	,ifM (elem str belowSyn) (return $ DirT $ Rel Below)
+	,ifM (elem str northSyn) (return $ DirT $ Abs North)
+	,ifM (elem str southSyn) (return $ DirT $ Abs South)
+	,ifM (elem str eastSyn) (return $ DirT $ Abs East)
+	,ifM (elem str westSyn) (return $ DirT $ Abs West)
+	,ifM (elem str downSyn) (return $ DirT $ Abs Down)
+	,ifM (elem str upSyn) (return $ DirT $ Abs Up)
+	,ifM (elem str hereSyn) (return $ DirT $ Abs Here)
 	]
 
 
