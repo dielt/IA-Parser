@@ -86,17 +86,39 @@ checkThd3 a list = or $ map ((a ==) . thd3) list
 \end{code}
 
 
+\begin{code}
+
+monadOr :: Mzero m =>  m a -> m a -> m a
+monadOr a b = if isMzero a then b else a -- we may need to make this a class to do what we want., i.e. without the Eq.
+
+listOr a b = if null a then b else a
+
+class Monad m => Mzero m where
+	mzero' :: m a
+	isMzero :: m a -> Bool
+	
+instance Mzero Maybe where
+	mzero' = Nothing
+	isMzero = isNothing
+	
+instance Mzero [] where
+	mzero' = []
+	isMzero = null
+
+\end{code}
+
+
+
+
+
 
 
 \begin{code}
 
-	
   
 --forces a function to act per line on streaming textual input
 eachLine :: (String -> String) -> (String -> String)
 eachLine f = unlines . map f . lines
-
-
 
 
 \end{code}
@@ -221,7 +243,7 @@ combineNCir circuits =
 			b'        = msum . (map snd) $ (map unCircuit circuits) <*> (pure a)
 		in (circuits',b')
 
-
+applyCircuits :: MonadPlus m => [Circuit a (m b)] -> a -> ([Circuit a (m b)],m b)
 applyCircuits circs obj = unCircuit (combineNCir circs) $ obj
 
 

@@ -25,6 +25,7 @@ Local modules
 
 import IAData
 import IAParse
+import IALexer
 import IAPath
 import IAUtil
 import IASyn
@@ -123,7 +124,10 @@ gameLoop = do
 		Just Help -> do
 			stateTMonadLift $ putStrLn "Help: TODO"  
 			gameLoop
-		_         -> gameLoop
+		Just VerNum -> do
+			stateTMonadLift $ putStrLn "VersionNumber:0 --Update this."  
+			gameLoop
+		_ -> gameLoop
 
 doActions :: StateT World IO ()
 doActions = do

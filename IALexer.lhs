@@ -1,7 +1,10 @@
 \begin{code}
 module IALexer where
 
+import Control.Applicative
 import Control.Monad
+import Data.Maybe
+import Data.Tree
 
 import IADataBase
 import IASyn
@@ -55,7 +58,19 @@ or else transistion to using that token in intent, but that leads us to the ques
 ideally we'd have something like
 
 
+Ok so
 
+We now have more of a base to work from, we still don't quite having it working how'd we'd like it
+The issue is now how we apply the lexer, ideally we would have a some sort of rose tree of lexing
+where we split on every word parsed.
+
+What I think would be important here is going to be how we structure the application of parses
+
+It is obviously not going to matter much how we deal with only single word lexers
+
+The problem comes up with multiworld lexer, i.e., we can parse get in as MoveT (Rel In) or as GetT (Name "in") 
+
+where we are going to 
 
 \begin{code}
 
@@ -66,7 +81,26 @@ data Token = Affirm Bool | Name String | Action ActionToken [Token] | Relation D
 
 type TokenCollection = [[Token]]
 
-type Lexer = Circuit String (Maybe Token)
+type Lexer = Circuit String ([Token])
+
+allBaseLexers :: Lexer
+allBaseLexers = combineNCir
+	[yesNoLexer
+	,sysEventLexer
+	,actionGetLexer
+	,actionMoveLexer
+	,actionLookLexer
+	,nameLexer
+	]
+
+\end{code}
+
+
+
+\begin{code}
+	
+nameLexer :: Lexer
+nameLexer = liftCir $ return . Name
 
 formatTokens :: [Token] -> [Token] -- this just returns the arguemts of an action to the normal list.
 formatTokens = foldr fn [] --idk if it is even going to be wanted
@@ -77,56 +111,78 @@ formatTokens = foldr fn [] --idk if it is even going to be wanted
 
 yesNoLexer :: Lexer
 yesNoLexer = liftCir $ \str ->
-	if' (elem str affirmSyn) (Just $ Affirm True) $
-	if' (elem str negSyn)    (Just $ Affirm False) $
-	Nothing
+	if' (elem str affirmSyn) (return $ Affirm True)  $
+	if' (elem str negSyn)    (return $ Affirm False) $
+	mzero
 	
 sysEventLexer :: Lexer
 sysEventLexer = liftCir $ \str -> msum $
-	[ifM (elem str quitSyn) (Just $ Action (SysComT Quit) [] )
-	,ifM (elem str helpSyn) (Just $ Action (SysComT Help) [])
-	,ifM (elem str settingSyn) (Just $ Action (SysComT Setting) [])
-	,ifM (elem str versionSyn) (Just $ Action (SysComT VerNum) [])
+	[ifM (elem str quitSyn) (return $ Action (SysComT Quit) [] )
+	,ifM (elem str helpSyn) (return $ Action (SysComT Help) [])
+	,ifM (elem str settingSyn) (return $ Action (SysComT Setting) [])
+	,ifM (elem str versionSyn) (return $ Action (SysComT VerNum) [])
 	]
 	
 actionGetLexer :: Lexer
 actionGetLexer = combineNCir --lots of repetition here idk what is doable
-	[liftCir2 $ \str1 str2 -> ifM (elem str1 getSyn) (Just $ Action GetT [(Name str2)]) --get x 
+	[liftCir2 $ \str1 str2 -> ifM (elem str1 getSyn) (return $ Action GetT [(Name str2)]) --get x 
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn)) 
-		(Just $ Action GetT [(Name str2),(Relation $ Rel In),(Name str3)] ) --get x in y
+		(return $ Action GetT [(Name str2),(Relation $ Rel In),(Name str3)] ) --get x in y
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 onSyn)) 
-		(Just $ Action GetT [(Name str2),(Relation $ Rel On),(Name str3)] ) --get x on y
+		(return $ Action GetT [(Name str2),(Relation $ Rel On),(Name str3)] ) --get x on y
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 belowSyn)) 
-		(Just $ Action GetT [(Name str2),(Relation $ Rel Below),(Name str3)] ) --get x below y
+		(return $ Action GetT [(Name str2),(Relation $ Rel Below),(Name str3)] ) --get x below y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn) && (elem str4 inSyn))
-		(Just $ Action GetT [(Name str2),(Relation $ Rel In),(Name str3)] ) --get x from in y -> get x in y
+		(return $ Action GetT [(Name str2),(Relation $ Rel In),(Name str3)] ) --get x from in y -> get x in y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 onSyn) && (elem str4 onSyn))
-		(Just $ Action GetT [(Name str2),(Relation $ Rel On),(Name str3)] ) --get x from on y -> get x on y
+		(return $ Action GetT [(Name str2),(Relation $ Rel On),(Name str3)] ) --get x from on y -> get x on y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn) && (elem str4 belowSyn)) --first 'inSyn' is intentional
-		(Just $ Action GetT [(Name str2),(Relation $ Rel Below),(Name str3)] ) --get x from below y -> get x below y
+		(return $ Action GetT [(Name str2),(Relation $ Rel Below),(Name str3)] ) --get x from below y -> get x below y
 	]
 
 --I am still concerned about how we interpret various parses, especially to do with this first result
 actionMoveLexer :: Lexer
 actionMoveLexer = combineNCir 
-	[liftCir $ dirLexer >=> (\dir -> Just $ Action MoveT [Relation dir] ) --i.e. is this too presumptive?, should it only be the second
-	,liftCirN 2 $ \(str1:str2:xs) -> ifM (elem str1 moveSyn) (dirLexer str2 >>= (\dir -> Just $ Action MoveT [Relation dir] ))
-	,liftCirN 3 $ \(str1:str2:str3:xs) -> ifM (elem str1 moveSyn) (dirLexer str2 >>= (\dir -> Just $ Action MoveT [(Relation dir),(Name str3)] ))
+	[liftCirN 2 $ \(str1:str2:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [Relation dir] ))
+	,liftCirN 3 $ \(str1:str2:str3:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [(Relation dir),(Name str3)] ))
+	] -- liftCir $ dirLexer >=> (\dir -> Just $ Action MoveT [Relation dir] ) --i.e. is this too presumptive?, should it only be the second
+
+actionLookLexer :: Lexer
+actionLookLexer = combineNCir
+	[liftCirN 2  $ \(str1:str2:xs) -> ifM (elem str1 lookSyn) (dirFn str2 >>= (\dir -> return $ Action LookT [Relation dir]))
 	]
 
-dirLexer :: String -> (Maybe Direction) --this doesn't really need to be a circuit, and it was so.
-dirLexer = \str -> msum $
-	[ifM (elem str inSyn) (Just $ Rel In)
-	,ifM (elem str outSyn) (Just $ Rel Out)
-	,ifM (elem str onSyn) (Just $ Rel On)
-	,ifM (elem str belowSyn) (Just $ Rel Below)
-	,ifM (elem str northSyn) (Just $ Abs North)
-	,ifM (elem str southSyn) (Just $ Abs South)
-	,ifM (elem str eastSyn) (Just $ Abs East)
-	,ifM (elem str westSyn) (Just $ Abs West)
-	,ifM (elem str downSyn) (Just $ Abs Down)
-	,ifM (elem str upSyn) (Just $ Abs Up)
-	,ifM (elem str hereSyn) (Just $ Abs Here)
+
+dirLexer:: Lexer
+dirLexer = liftCir $ \str -> msum $
+	[ifM (elem str inSyn) (return $ Relation $ Rel In)
+	,ifM (elem str outSyn) (return $ Relation $ Rel Out)
+	,ifM (elem str onSyn) (return $ Relation $ Rel On)
+	,ifM (elem str belowSyn) (return $ Relation $ Rel Below)
+	,ifM (elem str northSyn) (return $ Relation $ Abs North)
+	,ifM (elem str southSyn) (return $ Relation $ Abs South)
+	,ifM (elem str eastSyn) (return $ Relation $ Abs East)
+	,ifM (elem str westSyn) (return $ Relation $ Abs West)
+	,ifM (elem str downSyn) (return $ Relation $ Abs Down)
+	,ifM (elem str upSyn) (return $ Relation $ Abs Up)
+	,ifM (elem str hereSyn) (return $ Relation $ Abs Here)
+	]
+
+
+
+dirFn:: MonadPlus m => String -> (m Direction) --this doesn't really need to be a circuit, and it was so.
+dirFn = \str -> msum $
+	[ifM (elem str inSyn) (return $ Rel In)
+	,ifM (elem str outSyn) (return $ Rel Out)
+	,ifM (elem str onSyn) (return $ Rel On)
+	,ifM (elem str belowSyn) (return $ Rel Below)
+	,ifM (elem str northSyn) (return $ Abs North)
+	,ifM (elem str southSyn) (return $ Abs South)
+	,ifM (elem str eastSyn) (return $ Abs East)
+	,ifM (elem str westSyn) (return $ Abs West)
+	,ifM (elem str downSyn) (return $ Abs Down)
+	,ifM (elem str upSyn) (return $ Abs Up)
+	,ifM (elem str hereSyn) (return $ Abs Here)
 	]
 --
 
