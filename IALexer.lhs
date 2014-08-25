@@ -95,6 +95,10 @@ we would have issues with 'move','north' becoming (MoveT Here),(Name 'north').
 
 I suppose we could rely on the same solution as always, i.e. recognizing the problem case above as jibberish in later parsing.
 
+We could use a second trimming stage, as the tree can currently contain even syntacticly invalid possibilities.
+
+Some sort of Tree-> Maybe Tree
+
 
 \begin{code}
 
@@ -105,7 +109,7 @@ data Token = Affirm Bool | Name String | Action ActionToken [Token] | DirT Direc
 
 type TokenCollection = [[Token]]
 
-type Lexer = Circuit String ([Token])
+type Lexer = Circuit String [Token]
 
 allBaseLexers :: [Lexer]
 allBaseLexers =
@@ -114,6 +118,7 @@ allBaseLexers =
 	,actionGetLexer
 	,actionMoveLexer
 	,actionLookLexer
+	,dirLexer
 	,nameLexer
 	]
 
