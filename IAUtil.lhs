@@ -1,10 +1,11 @@
-
 \begin{code}
+
 
 module IAUtil where
 
 
 import Data.Maybe
+import Data.Monoid
 import Control.Monad
 import Control.Monad.Trans.State
 import qualified Control.Category as C
@@ -87,6 +88,8 @@ checkThd3 a list = or $ map ((a ==) . thd3) list
 
 
 \begin{code}
+
+
 
 monadOr :: Mzero m =>  m a -> m a -> m a
 monadOr a b = if isMzero a then b else a -- we may need to make this a class to do what we want., i.e. without the Eq.

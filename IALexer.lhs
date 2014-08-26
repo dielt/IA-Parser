@@ -135,19 +135,20 @@ unfoldForest2 f z = map (\(a,b) -> Node {rootLabel=a,subForest= unfoldForest2 f 
 buildLexForest :: [String] -> [Tree Token]
 buildLexForest = unfoldForest2 (applyLexers allBaseLexers)
 
+--we could consider applicative instead of monadplus
 --this seems to work
-applyLexers ::  [Lexer] -> [String] -> [(Token,[String])]
-applyLexers [] _ = []
-applyLexers lexers input = join $ map (applyLexer input) lexers
+applyLexers :: MonadPlus m => [Circuit a (m b)] -> [a] -> m (b,[a])
+applyLexers [] _ = mzero
+applyLexers lexers input = msum $ map (applyLexer input) lexers
 
 --applyLexer [String] -> Lexer  
 
-applyLexer :: [String] -> Lexer -> [(Token,[String])]
-applyLexer [] _ = []
-applyLexer input lex = let (lexers,tokens) = unCircuit lex $ head input in
+applyLexer :: MonadPlus m => [a] -> Circuit a (m b) -> m (b,[a])
+applyLexer [] _ = mzero
+applyLexer (x:xs) lex = let (lexers,tokens) = unCircuit lex x in
 	if null lexers
-		then map (\a -> (a,tail input)) tokens
-		else applyLexers lexers (tail input)
+		then liftM (\a -> (a,xs)) tokens
+		else applyLexers lexers xs
 
 \end{code}
 
