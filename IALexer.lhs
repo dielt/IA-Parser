@@ -100,14 +100,15 @@ We could use a second trimming stage, as the tree can currently contain even syn
 Some sort of Tree-> Maybe Tree
 
 
+
 \begin{code}
 
-
+--we should seriously consider removing the Action Token list as it makes parsing things weird.
 data ActionToken = MoveT | GetT | LookT | SysComT SysIntent deriving (Eq,Show)
 
 data Token = Affirm Bool | Name String | Action ActionToken [Token] | DirT Direction deriving (Eq,Show)
 
-type TokenCollection = [[Token]]
+type TokenCollection = [Tree Token]
 
 type Lexer = Circuit String [Token]
 
@@ -152,6 +153,19 @@ applyLexer (x:xs) lex = let (lexers,tokens) = unCircuit lex x in
 
 \end{code}
 
+
+taken from parse
+\begin{code}
+
+combInput :: [String] -> [[String]]
+combInput [] = []
+combInput input = foldr fn [[last input]] (init input)
+	where
+		fn :: String -> [[String]] -> [[String]]
+		fn x xs = (map ([x] ++) xs) ++ ( map (appHead ((x ++) . (" " ++) )) xs)
+
+
+\end{code}
 
 
 \begin{code}

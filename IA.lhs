@@ -9,6 +9,8 @@ import System.IO
 
 import Data.Char
 import Data.Maybe
+import Data.Tree
+import Data.List
 --import Control.Applicative -}
 import Control.Monad
 import Control.Monad.Trans.State
@@ -24,7 +26,7 @@ Local modules
 \begin{code}
 
 import IAData
-import IAParse
+import IAParse2
 import IALexer
 import IAPath
 import IAUtil
@@ -137,45 +139,52 @@ doActions = do
 
 doActionPlayer :: AliveA -> StateT World IO ()
 doActionPlayer peep = do
-	intent <- stateTPlayerInput peep
+	toks <- stateTPlayerInput
 	wrld <- get --ugly
-	let wrld' = doAction peep intent wrld
-	if null . maybeToList $ wrld'
+	let wrld' = foldl' mplus Nothing $ map (doAction peep wrld) (tokensToIntent toks)
+	if isNothing wrld'
 		then doActionPlayer peep
 		else put $ fromJust wrld'
 
 doActionAI :: AliveA -> StateT World IO ()
-doActionAI peep = do
+doActionAI peep =
 	return ()
 
-doAction :: Alive a => a -> Intent -> World -> Maybe World
-doAction peep intnt wrld = 
+
+--we are going to want to combine this with verifyIntent(IAParser2) somehow.
+--also note, we don't use our new conception of intents being executed by the world here.
+doAction :: Alive a => a -> World -> Intent -> Maybe World
+doAction peep wrld intnt =
 	case intnt of 
 		SysCom x -> Just $ wrld{sysEvent=Just x}
 		Move x   -> doMove wrld peep x
-		_        -> Nothing
+		_        -> Nothing 
 
 doMove :: Alive a => World -> a -> Target -> Maybe World
 doMove wrld peep (Tar Nothing tarId) = return wrld
 doMove wrld peep (Tar (Just tarDir) tarId) = return wrld
 
-stateTPlayerInput :: Alive a => a -> StateT World IO Intent
-stateTPlayerInput = fnToStateT . parsePlayerInput  -- peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
+stateTPlayerInput :: StateT World IO TokenCollection
+stateTPlayerInput = stateTMonadLift parsePlayerInput  -- peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
 
 
-parsePlayerInput :: Alive a => a -> World -> IO Intent
-parsePlayerInput peep wrld = 
-	(getInput >>= \input -> return $ parseIntentCombination wrld peep input) >>= 
-		(\intnt -> 
-			if intnt == Nothing
-				then parsePlayerInput peep wrld
-				else if intnt == Just (SysCom Quit)
-					then putStr "\nAre you sure you would like to quit?" >> yesNo >>= \response -> if response
-						then return (SysCom Quit)
-						else parsePlayerInput peep wrld
-					else return $ fromJust intnt
-		)
+parsePlayerInput :: IO TokenCollection
+parsePlayerInput = 
+	getInput >>= (return . buildLexForest) >>= parseQuit >>= \toks -> 
+		case toks of
+			Nothing   -> parsePlayerInput
+			otherwise -> return $ fromJust toks
 
+parseQuit :: TokenCollection -> IO (Maybe TokenCollection)
+parseQuit toks = if or $ map checkQuitToken toks
+	then putStr "\nAre you sure you would like to quit?" >> yesNo >>= \response -> if response
+		then return $ Just toks
+		else return $ Nothing --note we return nothing when we need a new tokenCollection
+	else return $ Just toks
+
+checkQuitToken :: Tree Token -> Bool
+checkQuitToken (Node x []) = x == Action (SysComT Quit) []
+checkQuitToken x = False
 
 \end{code}
 

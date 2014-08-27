@@ -69,10 +69,15 @@ allParsers = [
 	parseSys
 	]
 
-
 tokensToIntent :: [Tree Token] -> [Intent]
 tokensToIntent tokens = catMaybes $ mapFullForestM (buildParsedList allParsers) tokens
 
+--this is going to be useful in a variety of places, and should be shared
+verifyIntent :: World -> Id -> Intent -> Maybe Intent
+verifyIntent wrld id intnt = 
+	case intnt of
+		SysCom _ -> Just $ intnt
+		_        -> Nothing
 
 \end{code}
 
@@ -84,13 +89,18 @@ I think it best to simply return a list of whatever the each path returned
 
 \begin{code}
 
-parseSys :: World -> Parser
-parseSys _ = liftCir $ \inp ->
-	case inp of 
-		(Action (SysComT x) []) -> Just $ SysCom x
-		(Action (SysComT x) ((Name y):ys) ) -> ifM (elem y selfSyn) (Just $ SysCom x)
-		_ -> Nothing
+parseSys :: Parser
+parseSys = liftCir $ \inp -> case inp of 
+	(Action (SysComT x) []) -> Just $ SysCom x
+	(Action (SysComT Help) ((Name y):ys) ) -> ifM (elem y selfSyn) (Just $ SysCom Help)
+	_ -> Nothing
 
+{-
+this causes issues
+	liftCir2 $ \inp1 (Name y) -> case inp1 of
+		(Action (SysComT Help) []) -> ifM (elem y selfSyn) (Just $ SysCom Help)
+
+-}
 
 
 \end{code}
