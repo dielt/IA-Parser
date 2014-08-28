@@ -45,7 +45,7 @@ However, this brings to light a problem with our current lexxing, we assume that
 
 We have been avoiding the second problem thus far by being able pre-dict all of the the possible modifications, however in order for us to continue doing this we need to be able to produce mutliple tokens from the second word.
 
-what we need is instead of returning [(Token,[String])] we want to return [([Token],[String])] where [([],[stuff])] == []
+what we need is instead of returning [(Token,[String])] we want to return [([Token],[String])] where [([],[stuff])] == [];
 
 
 

@@ -186,14 +186,25 @@ parseQuit toks = if or $ map checkQuitToken toks
 	else return $ Just toks
 
 checkQuitToken :: Tree Token -> Bool
-checkQuitToken (Node x []) = x == Action (SysComT Quit) []
+checkQuitToken (Node x []) = x == Action (SysComT Quit)
 checkQuitToken x = False
 
 getToks :: IO TokenCollection
-getToks = getInput >>= return buildLexForest
+getToks = getInput >>= return . buildLexForest
 
-yesNo' ::
-yesNo' =  
+--not that useful
+tokenCheck :: [Token] -> IO Bool
+tokenCheck toks = liftM (map treeToList) getToks >>= return . or . map (elem toks)
+
+yesNo' :: IO Bool
+yesNo' = getToks >>= (return . foldr (\tok may -> if isNothing may 
+	then
+		case tok of 
+			Node (Affirm x) [] -> Just x
+			otherwise -> Nothing
+	else may
+	) Nothing) >>= (\x -> if isNothing x then (putStr "Please input either yes or no.") >> yesNo' else return $ fromJust x)
+	
 
 \end{code}
 

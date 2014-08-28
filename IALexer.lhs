@@ -130,22 +130,12 @@ allBaseLexers =
 
 --now we just need to assemble the tree
 
-unfoldForest2 :: (b -> [(a,b)]) -> b -> [Tree a]
-unfoldForest2 f z = map (\(a,b) -> Node {rootLabel=a,subForest= unfoldForest2 f b} ) (f z)
-
-unfoldForest3 ::(b->[([a],b)]) -> b -> [Tree a]
-unfoldForest3 f z = concatMap g (f z)
-	where
-		g ([],b) = []
-		g ((x:xs),b) = if null xs 
-			then [Node {rootLabel=x,subForest= unfoldForest3 f b} ]
-			else [Node {rootLabel=x,subForest=g (xs,b) }]
-
 buildLexForest :: [String] -> [Tree Token]
 buildLexForest = unfoldForest3 (applyLexers allBaseLexers)
 
 --we could consider applicative instead of monadplus
 --this seems to work
+
 
 
 
