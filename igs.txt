@@ -16,9 +16,36 @@ where Target is the source actor, with the idea that we can then check for const
 
 
 
+There is also the idea that we could totally replace IO with some sort of new layer, one which can only return tokens
 
+This however seems a bit too grandiose as how can we deal with output
 
+The simplest way of doing this would be to simply replace getInput with getTokens where-ever possible
 
+What do we gain?
+
+Well consistency, we don't need to constantly be dealing directly with strings,it also allows us to deal with conversation interestingly
+We can consider saying things as Action SayT [Token] for instance This points to two things,
+
+First we now resolve or concern over Actions having associated lists of tokens
+We see here an example of the most extreme use case for an embedded token list, wherein the whole token list takes on a new level of modality.
+But even here, what is gained over simply placing the list in its natural place, appending and not embedding in Say.
+The main argument is one of moving more functionality to the lexer, at least insofar as we can do so without increasing its requirements
+This is certainly something we can do with only syntax. 
+
+So what was the problem
+
+well what is the difference between Say [tokens] and Say [] toks
+
+the only thing we might take as meaningful would be the different resultant tree structure
+
+i.e. the first only allows for only a single interpretation whereas the second allows for subsequent lexes to produce multiple interpretations
+
+However, this brings to light a problem with our current lexxing, we assume that a single token can produce only a single Token, and similarly that later lexes cannot influence earlier tokens
+
+We have been avoiding the second problem thus far by being able pre-dict all of the the possible modifications, however in order for us to continue doing this we need to be able to produce mutliple tokens from the second word.
+
+what we need is instead of returning [(Token,[String])] we want to return [([Token],[String])] where [([],[stuff])] == []
 
 
 
