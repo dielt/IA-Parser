@@ -39,6 +39,7 @@ import IADataBase
 
 \begin{code}
 
+--we may want to transistion towards even this using our tokens.
 yesNo :: IO Bool
 yesNo = do
 	input <- getInput
@@ -141,7 +142,7 @@ doActionPlayer :: AliveA -> StateT World IO ()
 doActionPlayer peep = do
 	toks <- stateTPlayerInput
 	wrld <- get --ugly
-	let wrld' = foldl' mplus Nothing $ map (doAction peep wrld) (tokensToIntent toks)
+	let wrld' = foldr mplus Nothing $ map (doAction peep wrld) (tokensToIntent toks)
 	if isNothing wrld'
 		then doActionPlayer peep
 		else put $ fromJust wrld'
@@ -170,11 +171,13 @@ stateTPlayerInput = stateTMonadLift parsePlayerInput  -- peep = get >>= \wrld ->
 
 parsePlayerInput :: IO TokenCollection
 parsePlayerInput = 
-	getInput >>= (return . buildLexForest) >>= parseQuit >>= \toks -> 
+	getToks >>= parseQuit >>= \toks -> 
 		case toks of
 			Nothing   -> parsePlayerInput
 			otherwise -> return $ fromJust toks
 
+-- we could probably do this in gameLoop now, but I prefer this location. 
+--it feels like it makes less assumptions about there only being one player
 parseQuit :: TokenCollection -> IO (Maybe TokenCollection)
 parseQuit toks = if or $ map checkQuitToken toks
 	then putStr "\nAre you sure you would like to quit?" >> yesNo >>= \response -> if response
@@ -185,6 +188,12 @@ parseQuit toks = if or $ map checkQuitToken toks
 checkQuitToken :: Tree Token -> Bool
 checkQuitToken (Node x []) = x == Action (SysComT Quit) []
 checkQuitToken x = False
+
+getToks :: IO TokenCollection
+getToks = getInput >>= return buildLexForest
+
+yesNo' ::
+yesNo' =  
 
 \end{code}
 

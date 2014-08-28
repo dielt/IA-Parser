@@ -91,8 +91,7 @@ I think it best to simply return a list of whatever the each path returned
 
 parseSys :: Parser
 parseSys = liftCir $ \inp -> case inp of 
-	(Action (SysComT x) []) -> Just $ SysCom x
-	(Action (SysComT Help) ((Name y):ys) ) -> ifM (elem y selfSyn) (Just $ SysCom Help)
+	(Action (SysComT x)) -> Just $ SysCom x
 	_ -> Nothing
 
 {-

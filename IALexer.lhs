@@ -106,11 +106,11 @@ Some sort of Tree-> Maybe Tree
 --we should seriously consider removing the Action Token list as it makes parsing things weird.
 data ActionToken = MoveT | GetT | LookT | SysComT SysIntent deriving (Eq,Show)
 
-data Token = Affirm Bool | Name String | Action ActionToken [Token] | DirT Direction deriving (Eq,Show)
+data Token = Affirm Bool | Name String | Action ActionToken | DirT Direction deriving (Eq,Show)
 
 type TokenCollection = [Tree Token]
 
-type Lexer = Circuit String [Token]
+type Lexer = Circuit String [[Token]]
 
 allBaseLexers :: [Lexer]
 allBaseLexers =
@@ -133,11 +133,22 @@ allBaseLexers =
 unfoldForest2 :: (b -> [(a,b)]) -> b -> [Tree a]
 unfoldForest2 f z = map (\(a,b) -> Node {rootLabel=a,subForest= unfoldForest2 f b} ) (f z)
 
+unfoldForest3 ::(b->[([a],b)]) -> b -> [Tree a]
+unfoldForest3 f z = concatMap g (f z)
+	where
+		g ([],b) = []
+		g ((x:xs),b) = if null xs 
+			then [Node {rootLabel=x,subForest= unfoldForest3 f b} ]
+			else [Node {rootLabel=x,subForest=g (xs,b) }]
+
 buildLexForest :: [String] -> [Tree Token]
-buildLexForest = unfoldForest2 (applyLexers allBaseLexers)
+buildLexForest = unfoldForest3 (applyLexers allBaseLexers)
 
 --we could consider applicative instead of monadplus
 --this seems to work
+
+
+
 applyLexers :: MonadPlus m => [Circuit a (m b)] -> [a] -> m (b,[a])
 applyLexers [] _ = mzero
 applyLexers lexers input = msum $ map (applyLexer input) lexers
@@ -171,75 +182,74 @@ combInput input = foldr fn [[last input]] (init input)
 \begin{code}
 	
 nameLexer :: Lexer
-nameLexer = liftCir $ return . Name
+nameLexer = liftCir $ return . return . Name
 
+{- pointless now
 formatTokens :: [Token] -> [Token] -- this just returns the arguemts of an action to the normal list.
 formatTokens = foldr fn [] --idk if it is even going to be wanted
 	where
 		fn :: Token -> [Token] -> [Token]
 		fn (Action x xs) list = ((Action x []) : xs) ++ list
-		fn x list = x : list
+		fn x list = x : list-}
 
 yesNoLexer :: Lexer
 yesNoLexer = liftCir $ \str ->
-	if' (elem str affirmSyn) (return $ Affirm True)  $
-	if' (elem str negSyn)    (return $ Affirm False) $
+	if' (elem str affirmSyn) (return . return $ Affirm True)  $
+	if' (elem str negSyn)    (return . return $ Affirm False) $
 	mzero
 	
 sysEventLexer :: Lexer
 sysEventLexer = liftCir $ \str -> msum $
-	[ifM (elem str quitSyn) (return $ Action (SysComT Quit) [] )
-	,ifM (elem str helpSyn) (return $ Action (SysComT Help) [])
-	,ifM (elem str settingSyn) (return $ Action (SysComT Setting) [])
-	,ifM (elem str versionSyn) (return $ Action (SysComT VerNum) [])
+	[ifM (elem str quitSyn) (return $ [Action (SysComT Quit)])
+	,ifM (elem str helpSyn) (return $ [Action (SysComT Help)])
+	,ifM (elem str settingSyn) (return $ [Action (SysComT Setting)])
+	,ifM (elem str versionSyn) (return $ [Action (SysComT VerNum)])
 	]
 	
 actionGetLexer :: Lexer
 actionGetLexer = combineNCir --lots of repetition here idk what is doable
-	[liftCir2 $ \str1 str2 -> ifM (elem str1 getSyn) (return $ Action GetT [(Name str2)]) --get x 
+	[liftCir2 $ \str1 str2 -> ifM (elem str1 getSyn) (return $ [Action GetT,Name str2]) --get x 
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn)) 
-		(return $ Action GetT [(Name str2),(DirT $ Rel In),(Name str3)] ) --get x in y
+		(return $ [Action GetT,(Name str2),(DirT $ Rel In),(Name str3)] ) --get x in y
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 onSyn)) 
-		(return $ Action GetT [(Name str2),(DirT $ Rel On),(Name str3)] ) --get x on y
+		(return $ [Action GetT,(Name str2),(DirT $ Rel On),(Name str3)] ) --get x on y
 	,liftCirN 4 $ \(str1:str2:str3:str4:xs) -> ifM ((elem str1 getSyn) && (elem str3 belowSyn)) 
-		(return $ Action GetT [(Name str2),(DirT $ Rel Below),(Name str3)] ) --get x below y
+		(return $ [Action GetT,(Name str2),(DirT $ Rel Below),(Name str3)] ) --get x below y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn) && (elem str4 inSyn))
-		(return $ Action GetT [(Name str2),(DirT $ Rel In),(Name str3)] ) --get x from in y -> get x in y
+		(return $  [Action GetT,(Name str2),(DirT $ Rel In),(Name str3)] ) --get x from in y -> get x in y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 onSyn) && (elem str4 onSyn))
-		(return $ Action GetT [(Name str2),(DirT $ Rel On),(Name str3)] ) --get x from on y -> get x on y
+		(return $ [Action GetT,(Name str2),(DirT $ Rel On),(Name str3)] ) --get x from on y -> get x on y
 	,liftCirN 5 $ \(str1:str2:str3:str4:str5:xs) -> ifM ((elem str1 getSyn) && (elem str3 inSyn) && (elem str4 belowSyn)) --first 'inSyn' is intentional
-		(return $ Action GetT [(Name str2),(DirT $ Rel Below),(Name str3)] ) --get x from below y -> get x below y
+		(return $ [Action GetT,(Name str2),(DirT $ Rel Below),(Name str3)] ) --get x from below y -> get x below y
 	]
 
 --I am still concerned about how we interpret various parses, especially to do with this first result
 actionMoveLexer :: Lexer
 actionMoveLexer = combineNCir 
-	[liftCirN 2 $ \(str1:str2:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [DirT dir] ))
-	,liftCirN 3 $ \(str1:str2:str3:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ Action MoveT [(DirT dir),(Name str3)] ))
+	[liftCirN 2 $ \(str1:str2:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ [Action MoveT , DirT dir] ))
+	,liftCirN 3 $ \(str1:str2:str3:xs) -> ifM (elem str1 moveSyn) (dirFn str2 >>= (\dir -> return $ [Action MoveT, DirT dir , Name str3 ] ))
 	] -- liftCir $ dirLexer >=> (\dir -> Just $ Action MoveT [DirT dir] ) --i.e. is this too presumptive?, should it only be the second
 
 actionLookLexer :: Lexer
 actionLookLexer = combineNCir
-	[liftCirN 2  $ \(str1:str2:xs) -> ifM (elem str1 lookSyn) (dirFn str2 >>= (\dir -> return $ Action LookT [DirT dir]))
+	[liftCirN 2  $ \(str1:str2:xs) -> ifM (elem str1 lookSyn) (dirFn str2 >>= (\dir -> return $ [Action LookT,DirT dir]))
 	]
 
 
 dirLexer:: Lexer
 dirLexer = liftCir $ \str -> msum $
-	[ifM (elem str inSyn) (return $ DirT $ Rel In)
-	,ifM (elem str outSyn) (return $ DirT $ Rel Out)
-	,ifM (elem str onSyn) (return $ DirT $ Rel On)
-	,ifM (elem str belowSyn) (return $ DirT $ Rel Below)
-	,ifM (elem str northSyn) (return $ DirT $ Abs North)
-	,ifM (elem str southSyn) (return $ DirT $ Abs South)
-	,ifM (elem str eastSyn) (return $ DirT $ Abs East)
-	,ifM (elem str westSyn) (return $ DirT $ Abs West)
-	,ifM (elem str downSyn) (return $ DirT $ Abs Down)
-	,ifM (elem str upSyn) (return $ DirT $ Abs Up)
-	,ifM (elem str hereSyn) (return $ DirT $ Abs Here)
+	[ifM (elem str inSyn) (return . return $ DirT $ Rel In)
+	,ifM (elem str outSyn) (return . return $ DirT $ Rel Out)
+	,ifM (elem str onSyn) (return . return $ DirT $ Rel On)
+	,ifM (elem str belowSyn) (return . return $ DirT $ Rel Below)
+	,ifM (elem str northSyn) (return . return $ DirT $ Abs North)
+	,ifM (elem str southSyn) (return . return $ DirT $ Abs South)
+	,ifM (elem str eastSyn) (return . return $ DirT $ Abs East)
+	,ifM (elem str westSyn) (return . return $ DirT $ Abs West)
+	,ifM (elem str downSyn) (return . return $ DirT $ Abs Down)
+	,ifM (elem str upSyn) (return . return $ DirT $ Abs Up)
+	,ifM (elem str hereSyn) (return . return $ DirT $ Abs Here)
 	]
-
-
 
 dirFn:: MonadPlus m => String -> (m Direction) --this doesn't really need to be a circuit, and it was so.
 dirFn = \str -> msum $
