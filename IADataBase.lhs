@@ -6,6 +6,7 @@
 module IADataBase where
 
 import Data.Maybe
+import Data.Tree
 
 \end{code}
 
@@ -69,5 +70,18 @@ newtype Gram = Gram Integer deriving (Eq,Ord)
 eucDistSqrd (Coord (x,y)) (Coord (u,v)) = (x-u)^2 +(y-v)^2
 
 manAdj (Coord (x,y)) = [Coord (x - 1,y),Coord (x+1,y),Coord (x,y - 1),Coord (x,y+1)]
+
+\end{code}
+
+
+
+\begin{code}
+
+--we should seriously consider removing the Action Token list as it makes parsing things weird.
+data ActionToken = MoveT | GetT | LookT | SysComT SysIntent deriving (Eq,Show)
+
+data Token = Affirm Bool | Name String | Action ActionToken | DirT Direction deriving (Eq,Show)
+
+type TokenCollection = [Tree Token]
 
 \end{code}

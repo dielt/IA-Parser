@@ -8,6 +8,7 @@ module IAData where
 
 import Data.Maybe
 import Data.Monoid
+import Data.Tree
 import Data.List
 import Control.Monad.Trans.State
 import Control.Monad
@@ -197,7 +198,7 @@ And the same for Alive
 
 \begin{code}
 class Object a => Alive a where
-	intent :: a -> Maybe Intent
+	intent :: a -> Maybe Intent --I don't think we use intent at all now.
 	setIntent :: a -> Maybe Intent -> a
 	player :: a -> Bool
 	
@@ -256,6 +257,7 @@ worldAppId = \wrld f idt -> worldFoldFilter wrld (\x -> idn x == idt) (\a b -> J
 worldFoldFilterStateT :: (Object a, Monad m) => World -> (a -> Bool) -> (a -> StateT s m ()) -> StateT s m ()
 worldFoldFilterStateT wrld test f =  foldr (\a s -> (f $ a) >> s) (return ()) (filter test $ things wrld) -- liftM mconcat $ forM (filter test (things wrld)) f
 
+{- Testing purposes only
 worldFoldFilterStateTTest :: StateT World IO ()
 worldFoldFilterStateTTest = 
 	let 
@@ -264,6 +266,7 @@ worldFoldFilterStateTTest =
 		fn o = stateTMonadLift $ putStrLn "TESTSUCCESS"
 	in
 		worldFoldFilterStateT w (const True) fn
+-}
 
 \end{code}
 
@@ -546,6 +549,7 @@ data World = World {
 	,bottles:: Bottles
 	,wrldInv:: [Id]
 	,sysEvent::Maybe SysIntent
+	,wrldIntents :: [(Id,TokenCollection)]
 	}
 
 instance Object World where
@@ -586,6 +590,7 @@ newWorld = World
 	,bottles = []
 	,wrldInv = []
 	,sysEvent = Nothing
+	,wrldIntents=[]
 	}
 
 incId :: Id -> Id

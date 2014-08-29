@@ -99,16 +99,10 @@ We could use a second trimming stage, as the tree can currently contain even syn
 
 Some sort of Tree-> Maybe Tree
 
-
+This would allow us to requery to replace invalid commands, 
+Which makes it easier for us to justify only a single point of input per loop.
 
 \begin{code}
-
---we should seriously consider removing the Action Token list as it makes parsing things weird.
-data ActionToken = MoveT | GetT | LookT | SysComT SysIntent deriving (Eq,Show)
-
-data Token = Affirm Bool | Name String | Action ActionToken | DirT Direction deriving (Eq,Show)
-
-type TokenCollection = [Tree Token]
 
 type Lexer = Circuit String [[Token]]
 
@@ -130,8 +124,12 @@ allBaseLexers =
 
 --now we just need to assemble the tree
 
+buildLexForest1 :: [String] -> [Tree Token]
+buildLexForest1 = unfoldForest3 (applyLexers allBaseLexers)
+
+--i.e. this should be the default usage.
 buildLexForest :: [String] -> [Tree Token]
-buildLexForest = unfoldForest3 (applyLexers allBaseLexers)
+buildLexForest = (concatMap buildLexForest1) . combInput
 
 --we could consider applicative instead of monadplus
 --this seems to work

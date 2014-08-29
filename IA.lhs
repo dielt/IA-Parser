@@ -40,8 +40,8 @@ import IADataBase
 \begin{code}
 
 --we may want to transistion towards even this using our tokens.
-yesNo :: IO Bool
-yesNo = do
+yesNoOld :: IO Bool
+yesNoOld = do
 	input <- getInput
 	if null input 
 		then yesNo 
@@ -52,11 +52,11 @@ yesNo = do
 				else putStr "Please input either yes or no." >> yesNo
 
 
-
+--we no longer need the filler words filter, due to tokens
 getInput :: IO [String]
 getInput = --hFlush ensures that we print the prompt before getLine
 	putStr "\n>" >> hFlush stdout >>	getLine >>= 
-	(\x -> let y = (filter (not . flip elem fillerWords ) ) . words . (map toLower) $ x in 
+	(\x -> let y =  words . (map toLower) $ x in 
 		if null y 
 			then getInput 
 			else return y
@@ -118,6 +118,7 @@ Which is of doubtful overall benefit, given the hoops it has posed to elicite th
 
 gameLoop :: StateT World IO ()
 gameLoop = do
+	updateIntents
 	doActions
 	wrld <- get
 	modify clearSysEvent
@@ -132,51 +133,56 @@ gameLoop = do
 			gameLoop
 		_ -> gameLoop
 
+updateIntents :: StateT World IO ()
+updateIntents = do
+	modify (\w -> w{wrldIntents=[]})
+	get >>= ( \w -> worldFoldFilterStateT w player updateIntent )
+	get >>= ( \w -> worldFoldFilterStateT w (not . player) updateIntentAI )
+
+updateIntent :: AliveA -> StateT World IO ()
+updateIntent peep = do
+	toks <- stateTPlayerInput
+	modify (\w -> w{wrldIntents= (idn peep,toks) : (wrldIntents w) })
+	
+
+updateIntentAI :: AliveA -> StateT World IO ()
+updateIntentAI peep = do
+	stateTMonadLift $ putStrLn $ (show $ idn peep) ++ "UpdateIntentAI TODO"
+
+
 doActions :: StateT World IO ()
 doActions = do
-	get >>= ( \w -> worldFoldFilterStateT w player doActionPlayer )
-	get >>= ( \w -> worldFoldFilterStateT w (not . player) doActionAI )
+	wrld <- get
+	foldr (\intnt s -> (uncurry doAction1 $ intnt) >> s) (return ()) (wrldIntents wrld)
 
+doAction1 :: Id -> TokenCollection -> StateT World IO () 
+doAction1 idt toks =
+	maybeModifyT (\wrld -> (foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent toks) ) )
 
-doActionPlayer :: AliveA -> StateT World IO ()
-doActionPlayer peep = do
-	toks <- stateTPlayerInput
-	wrld <- get --ugly
-	let wrld' = foldr mplus Nothing $ map (doAction peep wrld) (tokensToIntent toks)
-	if isNothing wrld'
-		then doActionPlayer peep
-		else put $ fromJust wrld'
-
-doActionAI :: AliveA -> StateT World IO ()
-doActionAI peep =
-	return ()
-
-
---we are going to want to combine this with verifyIntent(IAParser2) somehow.
---also note, we don't use our new conception of intents being executed by the world here.
-doAction :: Alive a => a -> World -> Intent -> Maybe World
-doAction peep wrld intnt =
-	case intnt of 
+doAction2 :: Id -> World -> Intent -> Maybe World
+doAction2 idt wrld intnt = 
+	case intnt of
 		SysCom x -> Just $ wrld{sysEvent=Just x}
-		Move x   -> doMove wrld peep x
-		_        -> Nothing 
+		_        -> Nothing
 
-doMove :: Alive a => World -> a -> Target -> Maybe World
-doMove wrld peep (Tar Nothing tarId) = return wrld
-doMove wrld peep (Tar (Just tarDir) tarId) = return wrld
+--again idk if we need this.
+checkAction :: Id -> TokenCollection -> World -> Bool
+checkAction idt toks wrld = not . isNothing $ (foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent toks) )
+
+
 
 stateTPlayerInput :: StateT World IO TokenCollection
-stateTPlayerInput = stateTMonadLift parsePlayerInput  -- peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
+stateTPlayerInput = stateTMonadLift parsePlayerInput -- peep = get >>= \wrld -> stateTJoin . return $ parsePlayerInput peep wrld
 
 
 parsePlayerInput :: IO TokenCollection
-parsePlayerInput = 
-	getToks >>= parseQuit >>= \toks -> 
-		case toks of
-			Nothing   -> parsePlayerInput
-			otherwise -> return $ fromJust toks
+parsePlayerInput =
+	getToks >>= parseQuit >>= \toks ->
+		if isNothing toks
+			then parsePlayerInput
+			else return $ fromJust toks
 
--- we could probably do this in gameLoop now, but I prefer this location. 
+-- we could probably do this in gameLoop now, but I prefer this location.
 --it feels like it makes less assumptions about there only being one player
 parseQuit :: TokenCollection -> IO (Maybe TokenCollection)
 parseQuit toks = if or $ map checkQuitToken toks
@@ -196,41 +202,24 @@ getToks = getInput >>= return . buildLexForest
 tokenCheck :: [Token] -> IO Bool
 tokenCheck toks = liftM (map treeToList) getToks >>= return . or . map (elem toks)
 
-yesNo' :: IO Bool
-yesNo' = getToks >>= (return . foldr (\tok may -> if isNothing may 
-	then
-		case tok of 
-			Node (Affirm x) [] -> Just x
-			otherwise -> Nothing
-	else may
-	) Nothing) >>= (\x -> if isNothing x then (putStr "Please input either yes or no.") >> yesNo' else return $ fromJust x)
+yesNo :: IO Bool
+yesNo = getToks >>= (return . foldr (\tok may -> 
+	if isNothing may
+		then
+			case tok of 
+				Node (Affirm x) [] -> Just x
+				otherwise -> Nothing
+		else may
+	) Nothing) >>= (\x -> 
+		if isNothing x 
+			then (putStr "Please input either yes or no.") >> yesNo 
+			else return $ fromJust x
+		)
 	
 
 \end{code}
 
 
-
-This thing is problematic, it would be better to catch sysEvents on syntactic parsing of input
-
-\begin{code}
-{-
---idk if this is the best way to do world as a state
---or really if we ought to use state
---also note True == continue False == Stop
-checkSys :: State World (IO Bool)
-checkSys = do
-	wrld <- get
-	clearSysEvent
-	return $
-		case sysEvent wrld of
-			Just Quit -> putStr "\nAre you sure you would like to quit?" >> yesNo
-			Just Help -> putStr "Todo Help" >> return False
-			Nothing   -> return False
--}
-
-
-
-\end{code}
 
 
 

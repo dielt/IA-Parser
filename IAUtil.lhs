@@ -135,7 +135,22 @@ All of our various stateT utility code,
 there are probably library equivilents to some of these
 \begin{code}
 
+maybeModifyT ::  Monad m => (s -> Maybe s) -> StateT s m ()
+maybeModifyT f = do
+	s <- get
+	let s' = f s
+	if isNothing s'
+		then return ()
+		else put $ fromJust s'
 
+maybeModify :: (s -> Maybe s) -> State s ()
+maybeModify f = do
+	s <- get
+	let s' = f s
+	if isNothing s'
+		then return ()
+		else put $ fromJust s'
+	
 stateToStateT :: Monad m => State a b -> StateT a m b
 stateToStateT s = StateT $ \a -> return $ runState s a
 

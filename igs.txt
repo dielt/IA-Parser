@@ -48,6 +48,7 @@ We have been avoiding the second problem thus far by being able pre-dict all of 
 what we need is instead of returning [(Token,[String])] we want to return [([Token],[String])] where [([],[stuff])] == [];
 
 
-
+Ok, so we've pretty much got lexing/parsing working fine, at least structurally.
+We can now go back to repairing ia.
 
 
