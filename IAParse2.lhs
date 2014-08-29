@@ -68,10 +68,30 @@ I think it best to simply return a list of whatever the each path returned
 
 \begin{code}
 
+checkQuitToken :: Tree Token -> Bool
+checkQuitToken tree = (mapFullTreeM (buildParsedList [parseSys]) tree ) == (Just (SysCom Quit))
+
+--wow, way too much pattern matching going on here
+--this works for "help me" but not "help", and vice versa
 parseSys :: Parser
-parseSys = liftCir $ \inp -> case inp of 
-	(Action (SysComT x)) -> Just $ SysCom x
-	_ -> Nothing
+parseSys = combineNCir
+	[
+	liftCir2 $ \inp1 inp2 ->
+		case inp1 of 
+			(Action (SysComT x)) -> 
+				case inp2 of
+					(Name y) -> ifM (elem y selfSyn) (Just $ SysCom x)
+					_ -> Nothing
+			_ -> Nothing
+	,
+	liftCir $ \inp -> 
+		case inp of 
+			(Action (SysComT x)) -> Just $ SysCom x
+			_ -> Nothing
+	]
+	
+parseMove :: Parser
+parseMove = liftCir $ \_ -> Nothing
 
 {-
 this causes issues

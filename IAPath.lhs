@@ -20,7 +20,7 @@ b the current coord, and c the cumulative path cost from start to b
 NB as far as I can tell it ought to return an empty list iff there is no valid path from end to start.
 
 \begin{code}
-path ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a ->  [a]
+path ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> [a]
 path adj cost start end = if end == start then [] else  path2 adj cost start end [(start,start,0)]
 
 path2 ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> [(a,a,b)] -> [a] 

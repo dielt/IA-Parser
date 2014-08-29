@@ -141,8 +141,16 @@ updateIntents = do
 
 updateIntent :: AliveA -> StateT World IO ()
 updateIntent peep = do
+	describeEnv peep
 	toks <- stateTPlayerInput
 	modify (\w -> w{wrldIntents= (idn peep,toks) : (wrldIntents w) })
+	
+	
+describeEnv :: AliveA -> StateT World IO ()
+describeEnv peep = do
+	stateTMonadLift $ putStrLn "describeEnv"
+	stateTMonadLift $ putStrLn $ show $ idn peep
+	stateTMonadLift $ putStrLn $ show $ loc peep
 	
 
 updateIntentAI :: AliveA -> StateT World IO ()
@@ -163,12 +171,41 @@ doAction2 :: Id -> World -> Intent -> Maybe World
 doAction2 idt wrld intnt = 
 	case intnt of
 		SysCom x -> Just $ wrld{sysEvent=Just x}
+		Move (Target dir tId) -> ( worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
 		_        -> Nothing
 
 --again idk if we need this.
 checkAction :: Id -> TokenCollection -> World -> Bool
 checkAction idt toks wrld = not . isNothing $ (foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent toks) )
 
+\end{code}
+
+
+
+\begin{code}
+
+doMove :: Id -> Coord -> Maybe Direction -> World -> Maybe World
+doMove idt targ dir wrld =
+	let
+		getPath x y = lpath manAdj eucDistSqrd x y 50
+		g :: Coord -> AliveA -> Maybe World
+		g x peep = (listToMaybe $ getPath (loc peep) x) >>= \loc' -> Just $ worldRObj (setLoc peep loc') wrld
+		f y = join $ worldAppId wrld (g y) idt 
+	in
+		case dir of
+			Nothing -> f targ
+			Just (Abs x) -> (coordDir x targ) >>= f
+			otherwise -> Nothing
+
+
+
+\end{code}
+
+
+
+
+
+\begin{code}
 
 
 stateTPlayerInput :: StateT World IO TokenCollection
@@ -182,6 +219,7 @@ parsePlayerInput =
 			then parsePlayerInput
 			else return $ fromJust toks
 
+
 -- we could probably do this in gameLoop now, but I prefer this location.
 --it feels like it makes less assumptions about there only being one player
 parseQuit :: TokenCollection -> IO (Maybe TokenCollection)
@@ -191,9 +229,6 @@ parseQuit toks = if or $ map checkQuitToken toks
 		else return $ Nothing --note we return nothing when we need a new tokenCollection
 	else return $ Just toks
 
-checkQuitToken :: Tree Token -> Bool
-checkQuitToken (Node x []) = x == Action (SysComT Quit)
-checkQuitToken x = False
 
 getToks :: IO TokenCollection
 getToks = getInput >>= return . buildLexForest
@@ -201,6 +236,7 @@ getToks = getInput >>= return . buildLexForest
 --not that useful
 tokenCheck :: [Token] -> IO Bool
 tokenCheck toks = liftM (map treeToList) getToks >>= return . or . map (elem toks)
+
 
 yesNo :: IO Bool
 yesNo = getToks >>= (return . foldr (\tok may -> 

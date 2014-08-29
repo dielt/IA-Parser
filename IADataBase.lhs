@@ -8,6 +8,8 @@ module IADataBase where
 import Data.Maybe
 import Data.Tree
 
+import IAUtil
+
 \end{code}
 
 
@@ -48,7 +50,7 @@ changeSetting list sett =
 
 data Intent = SysCom SysIntent | Move Target | Get Id | Look Target deriving (Eq,Show)
 
-data Target = Tar (Maybe Direction) Id deriving (Eq, Show)
+data Target = Target (Maybe Direction) Id deriving (Eq, Show)
 
 \end{code}
 
@@ -59,7 +61,7 @@ Some basic Data types
 
 newtype Id = Id Int deriving (Show,Eq) --idk if this should just be Ix
 
-newtype Coord = Coord (Integer,Integer) deriving Eq
+newtype Coord = Coord (Integer,Integer) deriving (Eq,Show)
 
 newtype Ml = Ml Integer deriving (Eq, Ord) --millilitres
 
@@ -69,7 +71,20 @@ newtype Gram = Gram Integer deriving (Eq,Ord)
 
 eucDistSqrd (Coord (x,y)) (Coord (u,v)) = (x-u)^2 +(y-v)^2
 
+eucDist = sqrt . fromIntegral .: eucDistSqrd
+
 manAdj (Coord (x,y)) = [Coord (x - 1,y),Coord (x+1,y),Coord (x,y - 1),Coord (x,y+1)]
+
+coordAdd (Coord (x,y)) (Coord (u,v)) = (Coord (x+u,y+v))
+
+coordDir :: AbsDirection -> Coord -> Maybe Coord
+coordDir dir coor = 
+	case dir of
+		North -> Just $ coordAdd coor (Coord (0,10))
+		East  -> Just $ coordAdd coor (Coord (10,0))
+		West  -> Just $ coordAdd coor (Coord (-10,0))
+		South -> Just $ coordAdd coor (Coord (0,-10))
+		otherwise -> Nothing
 
 \end{code}
 
