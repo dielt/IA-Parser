@@ -146,7 +146,7 @@ applyLexers lexers input = msum $ map (applyLexer input) lexers
 applyLexer :: MonadPlus m => [a] -> Circuit a (m b) -> m (b,[a])
 applyLexer [] _ = mzero
 applyLexer (x:xs) lex = let (lexers,tokens) = unCircuit lex x in
-	if null lexers
+	if (null lexers) || (null xs)
 		then liftM (\a -> (a,xs)) tokens
 		else applyLexers lexers xs
 

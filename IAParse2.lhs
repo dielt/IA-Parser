@@ -44,10 +44,7 @@ buildParsedList parsers token = let x = applyLexers parsers token in x >>= \(int
 		else mzero
 
 
-allParsers = [
-	parseSys
-	]
-
+--there is a problem in here
 tokensToIntent :: [Tree Token] -> [Intent]
 tokensToIntent tokens = catMaybes $ mapFullForestM (buildParsedList allParsers) tokens
 
@@ -57,6 +54,19 @@ verifyIntent wrld id intnt =
 	case intnt of
 		SysCom _ -> Just $ intnt
 		_        -> Nothing
+
+
+allParsers = [
+	parseSys
+	]
+	
+--for testing 
+quitTree :: Tree Token
+quitTree = Node {rootLabel=Action $ SysComT Quit,subForest=[]}
+
+quitList :: [Token]
+quitList = [Action $ SysComT Quit]
+
 
 \end{code}
 
