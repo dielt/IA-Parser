@@ -164,8 +164,14 @@ doActions = do
 	foldr (\intnt s -> (uncurry doAction1 $ intnt) >> s) (return ()) (wrldIntents wrld)
 
 doAction1 :: Id -> TokenCollection -> StateT World IO () 
-doAction1 idt toks =
-	maybeModifyT (\wrld -> (foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent toks) ) )
+doAction1 idt toks = get >>= \wrld ->
+	let 
+		x = flip (worldAppId wrld) idt 
+			( (\peep -> maybeModifyT $ \wrld ->foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent wrld peep toks)  ) :: AliveA -> StateT World IO () )
+	in 
+		if isNothing x
+			then return ()
+			else fromJust x
 
 doAction2 :: Id -> World -> Intent -> Maybe World
 doAction2 idt wrld intnt = 
@@ -173,10 +179,6 @@ doAction2 idt wrld intnt =
 		SysCom x -> Just $ wrld{sysEvent=Just x}
 		Move (Target dir tId) -> ( worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
 		_        -> Nothing
-
---again idk if we need this.
-checkAction :: Id -> TokenCollection -> World -> Bool
-checkAction idt toks wrld = not . isNothing $ (foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent toks) )
 
 \end{code}
 

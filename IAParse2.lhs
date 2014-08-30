@@ -3,6 +3,7 @@ module IAParse2 where
 
 import Data.Tree
 import Control.Monad
+import Control.Applicative
 import Data.Monoid
 import Data.Maybe
 
@@ -45,8 +46,8 @@ buildParsedList parsers token = let x = applyLexers parsers token in x >>= \(int
 
 
 --there is a problem in here
-tokensToIntent :: [Tree Token] -> [Intent]
-tokensToIntent tokens = catMaybes $ mapFullForestM (buildParsedList allParsers) tokens
+tokensToIntent :: World -> AliveA -> [Tree Token] -> [Intent]
+tokensToIntent wrld peep tokens = catMaybes $ mapFullForestM (buildParsedList $ allParsers wrld peep) tokens
 
 --this is going to be useful in a variety of places, and should be shared
 verifyIntent :: World -> Id -> Intent -> Maybe Intent
@@ -55,8 +56,8 @@ verifyIntent wrld id intnt =
 		SysCom _ -> Just $ intnt
 		_        -> Nothing
 
-
-allParsers = [
+allParsers :: World -> AliveA -> [Parser]
+allParsers wrld peep = [
 	parseSys
 	]
 	
@@ -82,26 +83,41 @@ checkQuitToken :: Tree Token -> Bool
 checkQuitToken tree = (mapFullTreeM (buildParsedList [parseSys]) tree ) == (Just (SysCom Quit))
 
 --wow, way too much pattern matching going on here
---this works for "help me" but not "help", and vice versa
+--I don't really know how to avoid it though, given our current structure.
 parseSys :: Parser
 parseSys = combineNCir
 	[
-	liftCir2 $ \inp1 inp2 ->
-		case inp1 of 
-			(Action (SysComT x)) -> 
-				case inp2 of
-					(Name y) -> ifM (elem y selfSyn) (Just $ SysCom x)
-					_ -> Nothing
-			_ -> Nothing
+	liftCir2 $ 
+		let
+			f (Action (SysComT x)) (Name y) = ifM (elem y selfSyn) (Just $ SysCom x)
+			f _ _ = Nothing
+		in f
 	,
-	liftCir $ \inp -> 
-		case inp of 
-			(Action (SysComT x)) -> Just $ SysCom x
-			_ -> Nothing
+	liftCir $ 
+		let
+			f (Action (SysComT x)) = Just $ SysCom x
+			f _ = Nothing
+		in f
 	]
 	
-parseMove :: Parser
-parseMove = liftCir $ \_ -> Nothing
+parseMove :: World -> AliveA -> Parser
+parseMove wrld peep = combineNCir
+	[
+	liftCir $
+		let 
+			f (DirT x) = Just $ Move $ Target (Just x) (idn peep)
+			f _ = Nothing
+		in f
+	,
+	liftCir2 $
+		let
+			f (Action MoveT) (DirT x) = Just $ Move $ Target (Just x) (idn peep)
+			f _ _ = Nothing
+		in f
+	]
+
+--Move (Target (Maybe Direction) Id)
+
 
 {-
 this causes issues

@@ -90,24 +90,7 @@ checkThd3 a list = or $ map ((a ==) . thd3) list
 
 \begin{code}
 
-
-
-monadOr :: Mzero m =>  m a -> m a -> m a
-monadOr a b = if isMzero a then b else a -- we may need to make this a class to do what we want., i.e. without the Eq.
-
 listOr a b = if null a then b else a
-
-class Monad m => Mzero m where
-	mzero' :: m a
-	isMzero :: m a -> Bool
-	
-instance Mzero Maybe where
-	mzero' = Nothing
-	isMzero = isNothing
-	
-instance Mzero [] where
-	mzero' = []
-	isMzero = null
 
 \end{code}
 
@@ -271,9 +254,9 @@ instance C.Category Circuit where
 	(.)= chainCir
 
 
-
-
 \end{code}
+
+
 
 
 \begin{code}
@@ -307,7 +290,6 @@ unfoldForest3 f z = concatMap g (f z)
 		g ((x:xs),b) = if null xs 
 			then [Node {rootLabel=x,subForest= unfoldForest3 f b} ]
 			else [Node {rootLabel=x,subForest=g (xs,b) }]
-
 
 \end{code}
 

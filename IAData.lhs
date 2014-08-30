@@ -44,7 +44,7 @@ class Object o where
 	idn :: o -> Id
 	loc :: o -> Coord -- Coord a n => o -> a
 	setLoc :: o -> Coord -> o -- Coord a n => o -> a -> o
-	names :: o -> [(String,Int)]
+	names :: o -> [(String,Int)] -- we can also have that an object lacking names or description text, is not visible
 	things :: World -> [o]
 	setThings :: World -> [o] -> World
 	objVolume :: o -> Ml

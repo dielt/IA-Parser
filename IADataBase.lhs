@@ -54,7 +54,6 @@ data Target = Target (Maybe Direction) Id deriving (Eq, Show)
 
 \end{code}
 
-
 Some basic Data types 
 
 \begin{code}
@@ -96,6 +95,8 @@ coordDir dir coor =
 data ActionToken = MoveT | GetT | LookT | SysComT SysIntent deriving (Eq,Show)
 
 data Token = Affirm Bool | Name String | Action ActionToken | DirT Direction deriving (Eq,Show)
+
+
 
 type TokenCollection = [Tree Token]
 

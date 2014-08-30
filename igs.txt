@@ -52,3 +52,9 @@ Ok, so we've pretty much got lexing/parsing working fine, at least structurally.
 We can now go back to repairing ia.
 
 
+
+Working on Movement, I think we might want to move away from the ghost-memory idea we had had previously
+
+instead it might be better to revisit our action timer idea, if we simply have 
+
+
