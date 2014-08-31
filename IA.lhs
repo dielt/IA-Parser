@@ -143,7 +143,7 @@ updateIntent :: AliveA -> StateT World IO ()
 updateIntent peep = do
 	describeEnv peep
 	toks <- stateTPlayerInput
-	modify (\w -> w{wrldIntents= (idn peep,toks) : (wrldIntents w) })
+	modify (\w -> w{wrldIntents= (idn peep,tick w,toks) : (wrldIntents w) })
 	
 	
 describeEnv :: AliveA -> StateT World IO ()
@@ -161,23 +161,34 @@ updateIntentAI peep = do
 doActions :: StateT World IO ()
 doActions = do
 	wrld <- get
-	foldr (\intnt s -> (uncurry doAction1 $ intnt) >> s) (return ()) (wrldIntents wrld)
+	foldr (\intnt s -> (uncurry3 doAction1 $ intnt) >> s) (return ()) (wrldIntents wrld)
 
-doAction1 :: Id -> TokenCollection -> StateT World IO () 
-doAction1 idt toks = get >>= \wrld ->
+doAction1 :: Id -> Integer -> TokenCollection -> StateT World IO () 
+doAction1 idt tic toks = get >>= \wrld ->
 	let 
 		x = flip (worldAppId wrld) idt 
-			( (\peep -> maybeModifyT $ \wrld ->foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent wrld peep toks)  ) :: AliveA -> StateT World IO () )
+			( (\peep -> maybeModifyT $ \wrld -> foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent wrld peep toks)  ) :: AliveA -> StateT World IO () )
 	in 
 		if isNothing x
 			then return ()
 			else fromJust x
 
+--we may want some smarter way of sorting multiple viable intents
+--i.e. always prefering systemIntents or similar rules
+--this would just be a more complicated listToMaybe
+pickIntent :: Id -> World -> TokenCollection -> Maybe Intent
+pickIntent idt wrld toks = 
+	(worldAppId wrld (\peep -> tokensToIntent wrld peep toks) idt) >>=
+		listToMaybe . filter (checkIntent idt wrld)
+
+checkIntent :: Id -> World -> Intent -> Bool
+checkIntent = not . isNothing .:: doAction2
+
 doAction2 :: Id -> World -> Intent -> Maybe World
 doAction2 idt wrld intnt = 
 	case intnt of
 		SysCom x -> Just $ wrld{sysEvent=Just x}
-		Move (Target dir tId) -> ( worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
+		Move (Target dir tId) ->( worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
 		_        -> Nothing
 
 \end{code}

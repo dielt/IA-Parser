@@ -41,7 +41,7 @@ the only thing we might take as meaningful would be the different resultant tree
 
 i.e. the first only allows for only a single interpretation whereas the second allows for subsequent lexes to produce multiple interpretations
 
-However, this brings to light a problem with our current lexxing, we assume that a single token can produce only a single Token, and similarly that later lexes cannot influence earlier tokens
+However, this brings to light aproblem with our current lexxing, we assume that a single token can produce only a single Token, and similarly that later lexes cannot influence earlier tokens
 
 We have been avoiding the second problem thus far by being able pre-dict all of the the possible modifications, however in order for us to continue doing this we need to be able to produce mutliple tokens from the second word.
 
@@ -57,4 +57,35 @@ Working on Movement, I think we might want to move away from the ghost-memory id
 
 instead it might be better to revisit our action timer idea, if we simply have 
 
+Though there is a problem here, where do we deal with the timer,
+
+There is a couple considerations we would need to take
+
+We need to occasionally get new input and reset the timer
+
+we also will want to be able to trigger action at only certain intervals, i.e. moving a tile only every 5 ticks
+
+And ideally we would have both this interval and the overall length of the timer before new input is requested vary depending on the actor.
+
+So I'm thinking we need a function with signature  (Id,Tick,TokenCollection) -> World  -> Maybe Bool
+
+We can then restructure our program such that we filter out any actiongroups that return nothing
+
+Then we can filter again into two differant lists one for true, one for false,
+
+the true list we pass to doAction
+
+the false list we fold over, getting a new action group associated with each id
+
+now we come to the issue of the tokenCollection
+
+It somewhat complicates our above function, 
+
+especially given that the whole point of preserving the tokenCollection was to preserve ambiguity & the ability to parse in multiple differant ways
+
+So I think we are going to need to change our actiongroup to 
+
+(Id,Tick,Intent)
+
+Which means we need to recreate our checkIntent function Id -> Intent -> World -> Bool
 

@@ -46,7 +46,7 @@ buildParsedList parsers token = let x = applyLexers parsers token in x >>= \(int
 
 
 --there is a problem in here
-tokensToIntent :: World -> AliveA -> [Tree Token] -> [Intent]
+tokensToIntent :: World -> AliveA -> TokenCollection -> [Intent]
 tokensToIntent wrld peep tokens = catMaybes $ mapFullForestM (buildParsedList $ allParsers wrld peep) tokens
 
 --this is going to be useful in a variety of places, and should be shared
@@ -57,8 +57,9 @@ verifyIntent wrld id intnt =
 		_        -> Nothing
 
 allParsers :: World -> AliveA -> [Parser]
-allParsers wrld peep = [
-	parseSys
+allParsers wrld peep = 
+	[parseSys
+	,parseMove wrld peep
 	]
 	
 --for testing 

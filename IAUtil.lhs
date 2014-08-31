@@ -43,6 +43,13 @@ ifM True  x = x
 ifM False _ = mzero 
 
 
+uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
+uncurry3 f (a,b,c) = f a b c
+
+uncurry4 :: (a -> b -> c -> d -> e) -> (a,b,c,d) -> e
+uncurry4 f (a,b,c,d) = f a b c d
+
+
 --I don't think the type system will allow for a generalized version
 eat1Arg f = \a -> f
 eat2Arg f = \a b -> f
