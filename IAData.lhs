@@ -549,7 +549,7 @@ data World = World {
 	,bottles:: Bottles
 	,wrldInv:: [Id]
 	,sysEvent::Maybe SysIntent
-	,wrldIntents :: [(Id,Integer,Intent)] --Integer is tick started.
+	,wrldIntents :: [(Id,Integer,Maybe Intent)] --Integer is tick started.
 	}
 
 instance Object World where

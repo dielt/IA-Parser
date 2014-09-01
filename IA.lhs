@@ -100,7 +100,6 @@ We can see how this allows for a more complicated and immediatly explicit strucu
 Actually I still am not convinced as to the utility of State here. We are still doing an awful lot of fiddling
 
 Of course this does allow us to more cleanly implement that sort of system check, without removing our ability to have a continious flow of changes.
-
 We have a problem however, of how we can have io affect the state it is within
 
 i.e. can we have a function IO World -> State World (IO())
@@ -119,6 +118,7 @@ Which is of doubtful overall benefit, given the hoops it has posed to elicite th
 gameLoop :: StateT World IO ()
 gameLoop = do
 	deployIntent
+	verifyIntents
 	wrld <- get
 	modify clearSysEvent
 	modify ( \w -> w {tick = (tick w)+1} )
@@ -136,15 +136,45 @@ gameLoop = do
 deployIntent :: StateT World IO ()
 deployIntent = do 
 	wrld <- get
-	foldr (\(idt,tic,intnt) s ->  get >>= \w ->
-		( case checkIntentTime w idt tic intnt of
+	foldr (\(idt,tic,intnt) s ->  get >>= \w -> if isNothing intnt then updateIntent idt else
+		( case checkIntentTime w idt tic (fromJust intnt) of
 			Nothing    -> return () --do nothing
-			Just True  -> maybeModifyT (\w -> doAction idt w intnt) 
+			Just True  -> maybeModifyT (\w -> doAction idt w (fromJust intnt)) 
 			Just False -> updateIntent idt
 		) >> s) (return ()) ( wrldIntents wrld )
 
+\end{code}
+
+
+so VerifyIntents folds over every living thing and ensures there is a coorsponding actioncollection
+and in the second step folds over every actioncollection and checks for a coorsponding living thing.
+The second step is probably superfluous
+\begin{code}
+
+verifyIntents :: StateT World IO ()
+verifyIntents = do
+	modify 
+		(\wrld -> worldFold wrld 
+			((\p w -> 
+				if elem (idn p) (map fst3 $ wrldIntents w) 
+					then w 
+					else (w{wrldIntents = (idn p,(-1),Nothing) : (wrldIntents w) })  --note due to -1 tick, this should never trigger, we may wish to transistion to using Maybe Intent however, to make this clearer.
+				):: AliveA -> World -> World ) wrld
+		)
+	modify 
+		(\wrld -> wrld { wrldIntents =  foldr 
+				(\tok@(idt,_,_) list -> if isNothing $ worldAppId wrld (idn :: AliveA -> Id) idt
+					then list
+					else tok : list
+				) [] (wrldIntents wrld)
+			}
+		)
+
+
+
+
 --note fromJust . worldAppId is justified as this will only be called after checkIntent which already depends on worldAppId
---for now however we don't have any variance in speeds, so idt is unused
+--for now however we don't have any variance in speeds, so idt is currently unused
 checkIntentTime :: World -> Id -> Integer -> Intent -> Maybe Bool
 checkIntentTime wrld idt tic intnt = let curTime = tick wrld in
 	case intnt of
@@ -165,7 +195,7 @@ updateIntent idt = do
 		then stateTMonadLift $ putStrLn $ "updateIntent, descEnv Id" ++ show idt ++ " not found"
 		else fromJust desc
 	toks <- stateTPlayerInput
-	modify (\w -> w {wrldIntents = (idt , tick w , fromJust $ pickIntent idt w toks) : (wrldIntents w) })
+	modify (\w -> w {wrldIntents = (idt , tick w ,pickIntent idt w toks) : (wrldIntents w) })
 
 updateIntents :: StateT World IO ()
 updateIntents = do
@@ -177,7 +207,7 @@ updateIntentPlayer :: AliveA -> StateT World IO ()
 updateIntentPlayer peep = do
 	describeEnv peep
 	toks <- stateTPlayerInput
-	modify (\w -> let idt = idn peep in w {wrldIntents = (idt , tick w , fromJust $ pickIntent idt w toks) : (wrldIntents w) })
+	modify (\w -> let idt = idn peep in w {wrldIntents = (idt , tick w , pickIntent idt w toks) : (wrldIntents w) })
 	
 	
 describeEnv :: AliveA -> StateT World IO ()
@@ -188,22 +218,22 @@ describeEnv peep = do
 	
 
 updateIntentAI :: AliveA -> StateT World IO ()
-updateIntentAI peep = do
+updateIntentAI peep = 
 	stateTMonadLift $ putStrLn $ (show $ idn peep) ++ "UpdateIntentAI TODO"
 
 doActions :: StateT World IO ()
 doActions = do
 	wrld <- get
-	foldr (\(idt,tic,intnt) s -> (maybeModifyT (\w -> doAction idt w intnt)) >> s) (return ()) (wrldIntents wrld)
+	foldr (\(idt,tic,intnt) s -> if isNothing intnt then return () else
+		(maybeModifyT (\w -> doAction idt w $ fromJust intnt) ) >> s) (return ()) (wrldIntents wrld)
 
 
 --we may want some smarter way of sorting multiple viable intents
 --i.e. always prefering systemIntents or similar rules
---this would just be a more complicated listToMaybe
+--this would just be a more complicated listToMaybe, type wise at least.
 pickIntent :: Id -> World -> TokenCollection -> Maybe Intent
-pickIntent idt wrld toks = 
-	(worldAppId wrld (\peep -> tokensToIntent wrld peep toks) idt) >>= 
-		listToMaybe . filter (checkIntent idt wrld)
+pickIntent idt wrld toks =  
+		listToMaybe . filter (checkIntent idt wrld) =<<	worldAppId wrld (\peep -> tokensToIntent wrld peep toks) idt
 
 checkIntent :: Id -> World -> Intent -> Bool
 checkIntent = not . isNothing .:: doAction
