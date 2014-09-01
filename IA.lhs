@@ -94,8 +94,6 @@ prepWorld = do
 
 
 
-
-
 Ahah, here is where State World comes in handy, though the current structure does not make use of it
 We can see how this allows for a more complicated and immediatly explicit strucuture than the previous linear loop of IO
 
@@ -114,12 +112,13 @@ Really the predominant advantage of State thus far, has been to force us to be o
 Which is of doubtful overall benefit, given the hoops it has posed to elicite that
 
 
+
+
 \begin{code}
 
 gameLoop :: StateT World IO ()
 gameLoop = do
-	updateIntents
-	doActions
+	deployIntent
 	wrld <- get
 	modify clearSysEvent
 	modify ( \w -> w {tick = (tick w)+1} )
@@ -133,17 +132,52 @@ gameLoop = do
 			gameLoop
 		_ -> gameLoop
 
+
+deployIntent :: StateT World IO ()
+deployIntent = do 
+	wrld <- get
+	foldr (\(idt,tic,intnt) s ->  get >>= \w ->
+		( case checkIntentTime w idt tic intnt of
+			Nothing    -> return () --do nothing
+			Just True  -> maybeModifyT (\w -> doAction idt w intnt) 
+			Just False -> updateIntent idt
+		) >> s) (return ()) ( wrldIntents wrld )
+
+--note fromJust . worldAppId is justified as this will only be called after checkIntent which already depends on worldAppId
+--for now however we don't have any variance in speeds, so idt is unused
+checkIntentTime :: World -> Id -> Integer -> Intent -> Maybe Bool
+checkIntentTime wrld idt tic intnt = let curTime = tick wrld in
+	case intnt of
+		SysCom _ -> Just $ tic <= ( curTime )
+		Move _   ->
+			if tic <= ( curTime + 10 )
+				then if (mod (tic - curTime) 2) == 0
+					then Just True
+					else Nothing
+				else Just False
+		Get _    -> Just $ tic <= ( curTime + 2  )
+		Look _   -> Just $ tic <= ( curTime )
+
+updateIntent :: Id -> StateT World IO ()
+updateIntent idt = do
+	wrld <- get
+	let desc = worldAppId wrld describeEnv idt in if isNothing desc
+		then stateTMonadLift $ putStrLn $ "updateIntent, descEnv Id" ++ show idt ++ " not found"
+		else fromJust desc
+	toks <- stateTPlayerInput
+	modify (\w -> w {wrldIntents = (idt , tick w , fromJust $ pickIntent idt w toks) : (wrldIntents w) })
+
 updateIntents :: StateT World IO ()
 updateIntents = do
 	modify (\w -> w{wrldIntents=[]})
-	get >>= ( \w -> worldFoldFilterStateT w player updateIntent )
+	get >>= ( \w -> worldFoldFilterStateT w player updateIntentPlayer )
 	get >>= ( \w -> worldFoldFilterStateT w (not . player) updateIntentAI )
 
-updateIntent :: AliveA -> StateT World IO ()
-updateIntent peep = do
+updateIntentPlayer :: AliveA -> StateT World IO ()
+updateIntentPlayer peep = do
 	describeEnv peep
 	toks <- stateTPlayerInput
-	modify (\w -> w{wrldIntents= (idn peep,tick w,toks) : (wrldIntents w) })
+	modify (\w -> let idt = idn peep in w {wrldIntents = (idt , tick w , fromJust $ pickIntent idt w toks) : (wrldIntents w) })
 	
 	
 describeEnv :: AliveA -> StateT World IO ()
@@ -157,35 +191,25 @@ updateIntentAI :: AliveA -> StateT World IO ()
 updateIntentAI peep = do
 	stateTMonadLift $ putStrLn $ (show $ idn peep) ++ "UpdateIntentAI TODO"
 
-
 doActions :: StateT World IO ()
 doActions = do
 	wrld <- get
-	foldr (\intnt s -> (uncurry3 doAction1 $ intnt) >> s) (return ()) (wrldIntents wrld)
+	foldr (\(idt,tic,intnt) s -> (maybeModifyT (\w -> doAction idt w intnt)) >> s) (return ()) (wrldIntents wrld)
 
-doAction1 :: Id -> Integer -> TokenCollection -> StateT World IO () 
-doAction1 idt tic toks = get >>= \wrld ->
-	let 
-		x = flip (worldAppId wrld) idt 
-			( (\peep -> maybeModifyT $ \wrld -> foldr mplus Nothing $ map (doAction2 idt wrld) (tokensToIntent wrld peep toks)  ) :: AliveA -> StateT World IO () )
-	in 
-		if isNothing x
-			then return ()
-			else fromJust x
 
 --we may want some smarter way of sorting multiple viable intents
 --i.e. always prefering systemIntents or similar rules
 --this would just be a more complicated listToMaybe
 pickIntent :: Id -> World -> TokenCollection -> Maybe Intent
 pickIntent idt wrld toks = 
-	(worldAppId wrld (\peep -> tokensToIntent wrld peep toks) idt) >>=
+	(worldAppId wrld (\peep -> tokensToIntent wrld peep toks) idt) >>= 
 		listToMaybe . filter (checkIntent idt wrld)
 
 checkIntent :: Id -> World -> Intent -> Bool
-checkIntent = not . isNothing .:: doAction2
+checkIntent = not . isNothing .:: doAction
 
-doAction2 :: Id -> World -> Intent -> Maybe World
-doAction2 idt wrld intnt = 
+doAction :: Id -> World -> Intent -> Maybe World
+doAction idt wrld intnt = 
 	case intnt of
 		SysCom x -> Just $ wrld{sysEvent=Just x}
 		Move (Target dir tId) ->( worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
