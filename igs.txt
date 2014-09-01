@@ -89,3 +89,16 @@ So I think we are going to need to change our actiongroup to
 
 Which means we need to recreate our checkIntent function Id -> Intent -> World -> Bool
 
+
+
+Note from 
+
+https://www.haskell.org/ghc/docs/latest/html/users_guide/using-ghc.html
+
+If your program contains multiple modules, 
+then you only need to tell GHC the name of the source file containing the Main module, 
+and GHC will examine the import declarations to find the other modules that make up the program and find their source files. 
+This means that, with the exception of the Main module, 
+every source file should be named after the module name that it contains (with dots replaced by directory separators). 
+For example, the module Data.Person would be in the file Data/Person.hs on Unix/Linux/Mac, or Data\Person.hs on Windows.
+

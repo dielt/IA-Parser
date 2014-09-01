@@ -1,6 +1,6 @@
 
 \begin{code}
-module IA where
+module Main where
 
 
 --import System.Console.ANSI 
@@ -259,7 +259,13 @@ doAction idt wrld intnt =
 \begin{code}
 
 doMove :: Id -> Coord -> Maybe Direction -> World -> Maybe World
-doMove idt targ dir wrld =
+doMove idt targ dir wrld = worldAppId wrld (\peep -> worldRObj ( (setLoc peep $ coordAdd (Coord (0,1)) $ targ ) :: ObjectA ) wrld ) idt {-
+	if isNothing dir
+		then Just wrld
+		else case (fromJust dir) of
+			Abs North -> worldAppId wrld (\peep -> worldRObj ( (setLoc peep (coordAdd (Coord (0,1)) $ targ )) ::AliveA ) wrld ) idt
+			otherwise -> Just wrld -}
+	{-
 	let
 		getPath x y = lpath manAdj eucDistSqrd x y 10
 		g :: Coord -> AliveA -> Maybe World
@@ -270,6 +276,7 @@ doMove idt targ dir wrld =
 			Nothing -> f targ
 			Just (Abs x) -> (coordDir x targ) >>= f
 			otherwise -> Nothing
+	-}
 
 
 
