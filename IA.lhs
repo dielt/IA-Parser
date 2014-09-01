@@ -117,9 +117,12 @@ Which is of doubtful overall benefit, given the hoops it has posed to elicite th
 
 gameLoop :: StateT World IO ()
 gameLoop = do
-	deployIntent
+	stateTMonadLift $ putStrLn "loop"
 	verifyIntents
+	deployIntent
 	wrld <- get
+	(stateTMonadLift $ putStrLn $ (++)  "Tick:" $ show $ tick wrld )
+	stateTMonadLift $ putStrLn $ show $ wrldIntents wrld
 	modify clearSysEvent
 	modify ( \w -> w {tick = (tick w)+1} )
 	case sysEvent wrld of
@@ -138,9 +141,9 @@ deployIntent = do
 	wrld <- get
 	foldr (\(idt,tic,intnt) s ->  get >>= \w -> if isNothing intnt then updateIntent idt else
 		( case checkIntentTime w idt tic (fromJust intnt) of
-			Nothing    -> return () --do nothing
-			Just True  -> maybeModifyT (\w -> doAction idt w (fromJust intnt)) 
-			Just False -> updateIntent idt
+			Nothing    -> (stateTMonadLift $ putStrLn $ "deployIntent Nothing" ) >>return () --do nothing
+			Just True  -> (stateTMonadLift $ putStrLn $ "deployIntent True" ) >> maybeModifyT (\w -> doAction idt w (fromJust intnt)) 
+			Just False -> (stateTMonadLift $ putStrLn $ "deployIntent False" ) >> updateIntent idt
 		) >> s) (return ()) ( wrldIntents wrld )
 
 \end{code}
@@ -149,6 +152,7 @@ deployIntent = do
 so VerifyIntents folds over every living thing and ensures there is a coorsponding actioncollection
 and in the second step folds over every actioncollection and checks for a coorsponding living thing.
 The second step is probably superfluous
+Actually we might want a third step to ensure no duplicate ids
 \begin{code}
 
 verifyIntents :: StateT World IO ()
@@ -176,26 +180,31 @@ verifyIntents = do
 --note fromJust . worldAppId is justified as this will only be called after checkIntent which already depends on worldAppId
 --for now however we don't have any variance in speeds, so idt is currently unused
 checkIntentTime :: World -> Id -> Integer -> Intent -> Maybe Bool
-checkIntentTime wrld idt tic intnt = let curTime = tick wrld in
+checkIntentTime wrld idt tic intnt = let curTime = (tick wrld) - 2 in
 	case intnt of
-		SysCom _ -> Just $ tic <= ( curTime )
+		SysCom _ -> Just $ tic > ( curTime )
 		Move _   ->
-			if tic <= ( curTime + 10 )
+			if tic > ( curTime + 10 )
 				then if (mod (tic - curTime) 2) == 0
 					then Just True
 					else Nothing
 				else Just False
-		Get _    -> Just $ tic <= ( curTime + 2  )
-		Look _   -> Just $ tic <= ( curTime )
+		Get _    -> Just $ tic > ( curTime )
+		Look _   -> Just $ tic > ( curTime )
 
 updateIntent :: Id -> StateT World IO ()
 updateIntent idt = do
 	wrld <- get
-	let desc = worldAppId wrld describeEnv idt in if isNothing desc
+	let desc = worldAppId wrld describeEnv idt
+	if isNothing desc
 		then stateTMonadLift $ putStrLn $ "updateIntent, descEnv Id" ++ show idt ++ " not found"
 		else fromJust desc
 	toks <- stateTPlayerInput
-	modify (\w -> w {wrldIntents = (idt , tick w ,pickIntent idt w toks) : (wrldIntents w) })
+	let intnt = pickIntent idt wrld toks
+	modify (\w -> w {wrldIntents = filter (\x -> fst3 x /= idt) (wrldIntents w) } )
+	if isNothing intnt
+		then updateIntent idt
+		else modify (\w -> w {wrldIntents = (idt,tick w,intnt) : (wrldIntents w) } )
 
 updateIntents :: StateT World IO ()
 updateIntents = do
@@ -212,7 +221,7 @@ updateIntentPlayer peep = do
 	
 describeEnv :: AliveA -> StateT World IO ()
 describeEnv peep = do
-	stateTMonadLift $ putStrLn "describeEnv"
+	stateTMonadLift $ putStrLn "DescribeEnv:"
 	stateTMonadLift $ putStrLn $ show $ idn peep
 	stateTMonadLift $ putStrLn $ show $ loc peep
 	

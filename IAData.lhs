@@ -585,7 +585,7 @@ instance Container World where
 newWorld = World
 	{seed = 0
 	,tick = 0
-	,wrldId = Id 0
+	,wrldId = Id 1
 	,people = []
 	,bottles = []
 	,wrldInv = []
