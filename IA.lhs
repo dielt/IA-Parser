@@ -141,7 +141,7 @@ deployIntent = do
 	wrld <- get
 	foldr (\(idt,tic,intnt) s ->  get >>= \w -> if isNothing intnt then updateIntent idt else
 		( case checkIntentTime w idt tic (fromJust intnt) of
-			Nothing    -> (stateTMonadLift $ putStrLn $ "deployIntent Nothing" ) >>return () --do nothing
+			Nothing    -> (stateTMonadLift $ putStrLn $ "deployIntent Nothing" ) >> return () --do nothing
 			Just True  -> (stateTMonadLift $ putStrLn $ "deployIntent True" ) >> maybeModifyT (\w -> doAction idt w (fromJust intnt)) 
 			Just False -> (stateTMonadLift $ putStrLn $ "deployIntent False" ) >> updateIntent idt
 		) >> s) (return ()) ( wrldIntents wrld )
@@ -184,10 +184,8 @@ checkIntentTime wrld idt tic intnt = let curTime = (tick wrld) - 2 in
 	case intnt of
 		SysCom _ -> Just $ tic > ( curTime )
 		Move _   ->
-			if tic > ( curTime + 10 )
-				then if (mod (tic - curTime) 2) == 0
-					then Just True
-					else Nothing
+			if tic > (curTime )
+				then Just True
 				else Just False
 		Get _    -> Just $ tic > ( curTime )
 		Look _   -> Just $ tic > ( curTime )
@@ -251,7 +249,7 @@ doAction :: Id -> World -> Intent -> Maybe World
 doAction idt wrld intnt = 
 	case intnt of
 		SysCom x -> Just $ wrld{sysEvent=Just x}
-		Move (Target dir tId) ->( worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
+		Move (Target dir tId) -> (worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
 		_        -> Nothing
 
 \end{code}
@@ -263,7 +261,7 @@ doAction idt wrld intnt =
 doMove :: Id -> Coord -> Maybe Direction -> World -> Maybe World
 doMove idt targ dir wrld =
 	let
-		getPath x y = lpath manAdj eucDistSqrd x y 50
+		getPath x y = lpath manAdj eucDistSqrd x y 10
 		g :: Coord -> AliveA -> Maybe World
 		g x peep = (listToMaybe $ getPath (loc peep) x) >>= \loc' -> Just $ worldRObj (setLoc peep loc') wrld
 		f y = join $ worldAppId wrld (g y) idt 
