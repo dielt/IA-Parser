@@ -25,13 +25,15 @@ Local modules
 
 \begin{code}
 
-import IAData
+import Data.ObjectClass
+import Data.Base
 import IAParse2
 import IALexer
 import IAPath
-import IAUtil
+import Util.Base
+import Util.StateT
+import Util.Tree
 import IASyn
-import IADataBase
 
 \end{code}
 

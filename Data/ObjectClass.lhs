@@ -4,7 +4,7 @@
 
 
 
-module IAData where
+module Data.ObjectClass where
 
 import Data.Maybe
 import Data.Monoid
@@ -13,8 +13,8 @@ import Data.List
 import Control.Monad.Trans.State
 import Control.Monad
 
-import IAUtil
-import IADataBase
+import Util.Base
+import Data.Base
 
 \end{code}
 

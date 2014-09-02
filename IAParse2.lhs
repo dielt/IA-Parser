@@ -8,10 +8,12 @@ import Data.Monoid
 import Data.Maybe
 
 
-import IAUtil
+import Util.Base
+import Util.Circuit
+import Util.Tree
 import IALexer
-import IADataBase
-import IAData
+import Data.Base
+import Data.ObjectClass
 import IASyn
 
 \end{code}

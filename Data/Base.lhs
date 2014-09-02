@@ -3,12 +3,12 @@
 {-# LANGUAGE ExistentialQuantification  #-}
 
 
-module IADataBase where
+module Data.Base where
 
 import Data.Maybe
 import Data.Tree
 
-import IAUtil
+import Util.Base
 
 \end{code}
 

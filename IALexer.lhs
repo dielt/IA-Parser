@@ -6,9 +6,11 @@ import Control.Monad
 import Data.Maybe
 import Data.Tree
 
-import IADataBase
+import Data.Base
 import IASyn
-import IAUtil
+import Util.Base
+import Util.Circuit
+import Util.Tree
 
 \end{code}
 
