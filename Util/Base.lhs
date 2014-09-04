@@ -99,6 +99,9 @@ checkThd3 a list = or $ map ((a ==) . thd3) list
 
 listOr a b = if null a then b else a
 
+emptyList :: a -> [a]
+emptyList a = tail [a]
+
 \end{code}
 
 

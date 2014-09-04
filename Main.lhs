@@ -13,7 +13,7 @@ import Data.Tree
 import Data.List
 --import Control.Applicative -}
 import Control.Monad
-import Control.Monad.Trans.State
+import Control.Monad.State.Strict
 --import Graphics.UI.Gtk
 --import System.Environment
 --import Graphics.UI.SDL as SDL
@@ -85,7 +85,8 @@ parseSyntax :: Object a => a -> String -> [Intent]
 \begin{code}
 
 main :: IO ()
-main = evalStateT prepWorld newWorld
+main = chainWorldRObjTest
+-- evalStateT prepWorld newWorld
 
 prepWorld :: StateT World IO ()
 prepWorld = do
@@ -120,12 +121,12 @@ Which is of doubtful overall benefit, given the hoops it has posed to elicite th
 gameLoop :: StateT World IO ()
 gameLoop = do
 	stateTMonadLift $ putStrLn "loop"
-	verifyIntents
-	deployIntent
+	{-# SCC verifyIntents#-} verifyIntents
+	{-# SCC deployIntents#-} deployIntent
 	wrld <- get
 	(stateTMonadLift $ putStrLn $ (++)  "Tick:" $ show $ tick wrld )
 	stateTMonadLift $ putStrLn $ show $ wrldIntents wrld
-	modify clearSysEvent
+	{-# SCC clearSysEvent#-} modify clearSysEvent
 	modify ( \w -> w {tick = (tick w)+1} )
 	case sysEvent wrld of
 		Just Quit -> return ()
@@ -261,24 +262,19 @@ doAction idt wrld intnt =
 \begin{code}
 
 doMove :: Id -> Coord -> Maybe Direction -> World -> Maybe World
-doMove idt targ dir wrld = worldAppId wrld (\peep -> worldRObj ( (setLoc peep $ coordAdd (Coord (0,1)) $ targ ) :: ObjectA ) wrld ) idt {-
-	if isNothing dir
-		then Just wrld
-		else case (fromJust dir) of
-			Abs North -> worldAppId wrld (\peep -> worldRObj ( (setLoc peep (coordAdd (Coord (0,1)) $ targ )) ::AliveA ) wrld ) idt
-			otherwise -> Just wrld -}
-	{-
+doMove idt targ dir wrld =
 	let
 		getPath x y = lpath manAdj eucDistSqrd x y 10
 		g :: Coord -> AliveA -> Maybe World
-		g x peep = (listToMaybe $ getPath (loc peep) x) >>= \loc' -> Just $ worldRObj (setLoc peep loc') wrld
+		g x peep = (listToMaybe $ getPath (loc peep) x) >>= \loc' ->
+			Just $ worldRObj' (setLoc peep loc') wrld
 		f y = join $ worldAppId wrld (g y) idt 
 	in
 		case dir of
 			Nothing -> f targ
 			Just (Abs x) -> (coordDir x targ) >>= f
 			otherwise -> Nothing
-	-}
+
 
 
 

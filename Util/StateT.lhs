@@ -6,7 +6,7 @@ module Util.StateT where
 
 import Data.Maybe
 import Control.Monad
-import Control.Monad.Trans.State
+import Control.Monad.State.Strict
 
 import Util.Base
 

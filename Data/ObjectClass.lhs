@@ -10,7 +10,7 @@ import Data.Maybe
 import Data.Monoid
 import Data.Tree
 import Data.List
-import Control.Monad.Trans.State
+import Control.Monad.State.Strict
 import Control.Monad
 
 import Util.Base
@@ -26,14 +26,6 @@ If we were to try seperating class and data strictly we run into circular requir
 
 The easiest thing to split out is basic data defs.
 
-Some basic util fns
-\begin{code}
-
-emptyList :: a -> [a]
-emptyList a = tail [a]
-
-
-\end{code}
 
 
 Object Class definitions and related instances, including hetrogeneous container
@@ -83,6 +75,27 @@ This is the basic object managment code, note these delete the objects from the 
 
 \begin{code}
 
+worldAObj' :: Object a => a -> World -> World
+worldAObj' obj wrld = (\w -> w{wrldInv= (idn obj) : (wrldInv w)}) $! setThings wrld (obj : (things wrld))
+
+--removes everything with a matching idt
+worldDObj' :: Id -> World -> World
+worldDObj' idt wrld = worldFoldFilter' wrld test (\obj w -> setThings w (delete obj (things w) ) ) wrld
+	where
+		test :: ObjectA -> Bool
+		test = \o -> idn o == idt 
+
+worldRObj' :: Object a => a -> World -> World
+worldRObj' obj wrld = setThings wrld $ worldFoldFilter' wrld (const True) (\a list -> if (idn a == idn obj) then obj : list else a : list ) (emptyList obj)
+
+
+\end{code}
+
+Maybe we can try to replace worldRObj with a function that makes a single pass thorgh things
+
+
+\begin{code}
+
 worldAObj :: Object a => a -> World -> World
 worldAObj obj wrld = (\w -> w{wrldInv= (idn obj) : (wrldInv w)}) $ setThings wrld (obj : (things wrld))
 
@@ -104,6 +117,43 @@ worldDObjTest idt wrld = let w = worldDObj idt wrld in
 worldRObj :: Object a => a -> World -> World
 worldRObj obj wrld = (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
 
+\end{code}
+
+testing, we can hopfully deal with the stack overflows that seem to be coming from worldRObj
+\begin{code}
+
+worldRObjTest :: World -> (World,String)
+worldRObjTest wrld =
+	let
+		f :: AliveA -> World -> World
+		f o w = worldRObj (setLoc o $ coordAdd (Coord (0,1)) $ loc o) w
+		wrld' =  worldFoldFilter wrld (const True) f wrld 
+		strings = show . length . (things :: World -> [AliveA]) $ wrld
+	in (wrld',strings)
+
+chainWorldRObjTest :: IO ()
+chainWorldRObjTest = do
+	idt <- (liftM read $ getLine)
+	let wrld = worldAObj (newPersonId $ Id idt) newWorld
+	let (wrld1,str1) = worldRObjTest wrld
+	putStrLn str1 
+	let (wrld2,str2) = worldRObjTest wrld1
+	putStrLn str2
+	let (wrld3,str3) = worldRObjTest wrld2
+	putStrLn str3 
+	let (wrld4,str4) = worldRObjTest wrld3
+	putStrLn str4 {-
+	let (wrld5,str5) = worldRObjTest wrld4
+	putStrLn str5
+	let (wrld6,str6) = worldRObjTest wrld5
+	putStrLn str6
+	let (wrld7,str7) = worldRObjTest wrld6
+	putStrLn str7 -}
+
+
+
+	
+	
 \end{code}
 
 
@@ -269,6 +319,18 @@ worldFoldFilterStateTTest =
 -}
 
 \end{code}
+
+
+
+\begin{code}
+
+worldFoldFilter' ::Object c => World -> (c -> Bool) -> (c -> b -> b) -> b -> b
+worldFoldFilter' = \wrld test f z  -> foldl' (flip f) z (filter test (things wrld))
+
+\end{code}
+
+
+
 
 
 

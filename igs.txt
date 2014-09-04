@@ -102,3 +102,14 @@ This means that, with the exception of the Main module,
 every source file should be named after the module name that it contains (with dots replaced by directory separators). 
 For example, the module Data.Person would be in the file Data/Person.hs on Unix/Linux/Mac, or Data\Person.hs on Windows.
 
+
+
+
+
+
+Also note
+
+
+current heap profiling command
+
+ia +RTS -hc -p -K100M -i0.005
