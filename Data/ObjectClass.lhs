@@ -73,24 +73,6 @@ worldObjects wrld =
 
 This is the basic object managment code, note these delete the objects from the world, not just from inventories
 
-\begin{code}
-
-worldAObj' :: Object a => a -> World -> World
-worldAObj' obj wrld = (\w -> w{wrldInv= (idn obj) : (wrldInv w)}) $! setThings wrld (obj : (things wrld))
-
---removes everything with a matching idt
-worldDObj' :: Id -> World -> World
-worldDObj' idt wrld = worldFoldFilter' wrld test (\obj w -> setThings w (delete obj (things w) ) ) wrld
-	where
-		test :: ObjectA -> Bool
-		test = \o -> idn o == idt 
-
-worldRObj' :: Object a => a -> World -> World
-worldRObj' obj wrld = setThings wrld $ worldFoldFilter' wrld (const True) (\a list -> if (idn a == idn obj) then obj : list else a : list ) (emptyList obj)
-
-
-\end{code}
-
 Maybe we can try to replace worldRObj with a function that makes a single pass thorgh things
 
 
@@ -99,10 +81,6 @@ Maybe we can try to replace worldRObj with a function that makes a single pass t
 worldAObj :: Object a => a -> World -> World
 worldAObj obj wrld = (\w -> w{wrldInv= (idn obj) : (wrldInv w)}) $ setThings wrld (obj : (things wrld))
 
-worldAObjTest :: (Object a, Eq a) => a -> World -> Bool
-worldAObjTest obj wrld = let w = worldAObj obj wrld in
-	(elem (idn obj) (wrldInv w) ) && ( elem obj $ things w )
-
 --removes everything with a matching idt
 worldDObj :: Id -> World -> World
 worldDObj idt wrld = worldFoldFilter wrld test (\obj w -> setThings w (delete obj (things w) ) ) wrld
@@ -110,12 +88,19 @@ worldDObj idt wrld = worldFoldFilter wrld test (\obj w -> setThings w (delete ob
 		test :: ObjectA -> Bool
 		test = \o -> idn o == idt 
 
-worldDObjTest :: Id -> World -> Bool
-worldDObjTest idt wrld = let w = worldDObj idt wrld in
-	(not $ elem idt $ wrldInv w) && (not $ elem idt $ map idn ( things wrld :: [ObjectA] ) )
+dtest :: [Bool]
+dtest = 
+	let 
+		wrld1 = worldAObj (newPersonId $ Id 1) newWorld
+		wrld' = worldDObj (Id 1) wrld1
+	in 
+		[0 == (length . (things :: World -> [AliveA]) $ wrld')
+		,1 == (length . (things :: World -> [AliveA]) $ wrld')
+		,2 == (length . (things :: World -> [AliveA]) $ wrld')
+		]
 
 worldRObj :: Object a => a -> World -> World
-worldRObj obj wrld = (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
+worldRObj obj wrld = wrld -- (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
 
 \end{code}
 
@@ -150,7 +135,15 @@ chainWorldRObjTest = do
 	let (wrld7,str7) = worldRObjTest wrld6
 	putStrLn str7 -}
 
+test n = test2 n (worldAObj (newPersonId $ Id 1) newWorld)
 
+test2 :: Int -> World -> Bool
+test2 n wrld = snd $ foldr (\_ (w,b) ->
+	if ((2 >) . length . (things :: World -> [AliveA]) $ w)
+		then let o = head . (things :: World -> [AliveA]) $ w in (worldRObj (setLoc o $ coordAdd (Coord (0,1)) $ loc o) w , b && True)
+		else (w,b && False)
+	) (wrld,True) [0 .. n] 
+--messing around with induction
 
 	
 	
