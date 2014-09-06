@@ -85,8 +85,7 @@ parseSyntax :: Object a => a -> String -> [Intent]
 \begin{code}
 
 main :: IO ()
-main = chainWorldRObjTest
--- evalStateT prepWorld newWorld
+main = evalStateT prepWorld newWorld
 
 prepWorld :: StateT World IO ()
 prepWorld = do
@@ -121,12 +120,12 @@ Which is of doubtful overall benefit, given the hoops it has posed to elicite th
 gameLoop :: StateT World IO ()
 gameLoop = do
 	stateTMonadLift $ putStrLn "loop"
-	{-# SCC verifyIntents#-} verifyIntents
-	{-# SCC deployIntents#-} deployIntent
+	verifyIntents
+	deployIntent
 	wrld <- get
 	(stateTMonadLift $ putStrLn $ (++)  "Tick:" $ show $ tick wrld )
 	stateTMonadLift $ putStrLn $ show $ wrldIntents wrld
-	{-# SCC clearSysEvent#-} modify clearSysEvent
+	modify clearSysEvent
 	modify ( \w -> w {tick = (tick w)+1} )
 	case sysEvent wrld of
 		Just Quit -> return ()
@@ -267,7 +266,7 @@ doMove idt targ dir wrld =
 		getPath x y = lpath manAdj eucDistSqrd x y 10
 		g :: Coord -> AliveA -> Maybe World
 		g x peep = (listToMaybe $ getPath (loc peep) x) >>= \loc' ->
-			Just $ worldRObj' (setLoc peep loc') wrld
+			Just $ worldRObj (setLoc peep loc') wrld
 		f y = join $ worldAppId wrld (g y) idt 
 	in
 		case dir of

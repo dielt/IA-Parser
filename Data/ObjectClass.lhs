@@ -65,7 +65,7 @@ instance Object ObjectA where
 
 worldObjects :: World -> [ObjectA]
 worldObjects wrld = 
-	map ObjectA (people wrld) ++ 
+	map ObjectA (people wrld) ++
 	map ObjectA (bottles wrld) ++
 	[ObjectA wrld]
 
@@ -639,7 +639,7 @@ instance Object World where
 	setLoc = \w _ -> w
 	names = \_ -> []
 	things = \w -> tail [w]
-	setThings = \w ws -> fromJust $ (listToMaybe ws) `mplus` (Just w)
+	setThings = \w ws -> w -- fromJust $ (listToMaybe ws) `mplus` (Just w) --This doesn't work as I expected. 
 	objVolume = \_ -> Ml (10^27) --apparently this is somewhat accurate, order of mag, via wolfram alpha
 	parent = \_ -> Id 0
 	setParent = \w _ -> w 
