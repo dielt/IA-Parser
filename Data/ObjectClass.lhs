@@ -91,88 +91,9 @@ worldDObj idt wrld =
 	in setThings (wrld{wrldInv = deleteAll idt $ wrldInv wrld }) list'
 	
 
-dtest :: [Bool]
-dtest = 
-	let 
-		wrld1 = worldAObj (newPersonId $ Id 1) newWorld
-		wrld' = worldDObj (Id 1) wrld1
-	in 
-		[0 == (length . (things :: World -> [AliveA]) $ wrld')
-		,1 == (length . (things :: World -> [AliveA]) $ wrld')
-		,2 == (length . (things :: World -> [AliveA]) $ wrld')
-		]
-		
-dtest2 :: [Id]
-dtest2 = 
-	let
-		wrld1 = worldAObj (newPersonId $ Id 2) $ worldAObj (newPersonId $ Id 1) newWorld
-		wrld2 = worldDObj (Id 1) wrld1
-		wrld3 = worldDObj (Id 1) wrld2
-		wrld' = worldDObj (Id 1) wrld3
-	in map idn $ (things :: World -> [AliveA]) $ wrld'
---ok so the problem seems to be that worldDObj doesn't delete any objects 
---and instead multiplies the number of anything with a differant Id
-
 worldRObj :: Object a => a -> World -> World
-worldRObj obj wrld = wrld -- (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
+worldRObj obj wrld = (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
 
-\end{code}
-
-testing, we can hopfully deal with the stack overflows that seem to be coming from worldRObj
-\begin{code}
-
-worldRObjTest :: World -> (World,String)
-worldRObjTest wrld =
-	let
-		f :: AliveA -> World -> World
-		f o w = worldRObj (setLoc o $ coordAdd (Coord (0,1)) $ loc o) w
-		wrld' =  worldFoldFilter wrld (const True) f wrld 
-		strings = show . length . (things :: World -> [AliveA]) $ wrld
-	in (wrld',strings)
-
-chainWorldRObjTest :: IO ()
-chainWorldRObjTest = do
-	idt <- (liftM read $ getLine)
-	let wrld = worldAObj (newPersonId $ Id idt) newWorld
-	let (wrld1,str1) = worldRObjTest wrld
-	putStrLn str1 
-	let (wrld2,str2) = worldRObjTest wrld1
-	putStrLn str2
-	let (wrld3,str3) = worldRObjTest wrld2
-	putStrLn str3 
-	let (wrld4,str4) = worldRObjTest wrld3
-	putStrLn str4 {-
-	let (wrld5,str5) = worldRObjTest wrld4
-	putStrLn str5
-	let (wrld6,str6) = worldRObjTest wrld5
-	putStrLn str6
-	let (wrld7,str7) = worldRObjTest wrld6
-	putStrLn str7 -}
-
-
-testSet :: [Bool]
-testSet = 
-	let 
-		peep = (AliveA $ newPersonId $ Id 1)
-		wrld = setThings newWorld [peep]
-	in
-	[elem peep (things wrld)
-	,elem peep (things $ setThings wrld $ emptyList peep)
-	]
-
-
-test n = test2 n (worldAObj (newPersonId $ Id 1) newWorld)
-
-test2 :: Int -> World -> Bool
-test2 n wrld = snd $ foldr (\_ (w,b) ->
-	if ((2 >) . length . (things :: World -> [AliveA]) $ w)
-		then let o = head . (things :: World -> [AliveA]) $ w in (worldRObj (setLoc o $ coordAdd (Coord (0,1)) $ loc o) w , b && True)
-		else (w,b && False)
-	) (wrld,True) [0 .. n] 
---messing around with induction
-
-	
-	
 \end{code}
 
 
