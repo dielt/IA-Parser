@@ -83,10 +83,13 @@ worldAObj obj wrld = (\w -> w{wrldInv= (idn obj) : (wrldInv w)}) $ setThings wrl
 
 --removes everything with a matching idt
 worldDObj :: Id -> World -> World
-worldDObj idt wrld = worldFoldFilter wrld test (\obj w -> setThings w (delete obj (things w) ) ) wrld
-	where
-		test :: ObjectA -> Bool
-		test = \o -> idn o == idt 
+worldDObj idt wrld = 
+	let
+		f :: ObjectA -> [ObjectA] -> [ObjectA]
+		f o list = if idn o == idt then list else o : list
+		list' = worldFold wrld f []
+	in setThings (wrld{wrldInv = deleteAll idt $ wrldInv wrld }) list'
+	
 
 dtest :: [Bool]
 dtest = 
@@ -98,6 +101,17 @@ dtest =
 		,1 == (length . (things :: World -> [AliveA]) $ wrld')
 		,2 == (length . (things :: World -> [AliveA]) $ wrld')
 		]
+		
+dtest2 :: [Id]
+dtest2 = 
+	let
+		wrld1 = worldAObj (newPersonId $ Id 2) $ worldAObj (newPersonId $ Id 1) newWorld
+		wrld2 = worldDObj (Id 1) wrld1
+		wrld3 = worldDObj (Id 1) wrld2
+		wrld' = worldDObj (Id 1) wrld3
+	in map idn $ (things :: World -> [AliveA]) $ wrld'
+--ok so the problem seems to be that worldDObj doesn't delete any objects 
+--and instead multiplies the number of anything with a differant Id
 
 worldRObj :: Object a => a -> World -> World
 worldRObj obj wrld = wrld -- (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
@@ -134,6 +148,18 @@ chainWorldRObjTest = do
 	putStrLn str6
 	let (wrld7,str7) = worldRObjTest wrld6
 	putStrLn str7 -}
+
+
+testSet :: [Bool]
+testSet = 
+	let 
+		peep = (AliveA $ newPersonId $ Id 1)
+		wrld = setThings newWorld [peep]
+	in
+	[elem peep (things wrld)
+	,elem peep (things $ setThings wrld $ emptyList peep)
+	]
+
 
 test n = test2 n (worldAObj (newPersonId $ Id 1) newWorld)
 
