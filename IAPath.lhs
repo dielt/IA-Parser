@@ -20,28 +20,28 @@ b the current coord, and c the cumulative path cost from start to b
 NB as far as I can tell it ought to return an empty list iff there is no valid path from end to start.
 
 \begin{code}
-path ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> [a]
-path adj cost start end = if end == start then [] else  path2 adj cost start end [(start,start,0)]
+path ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> Maybe [a]
+path adj cost start end = if end == start then Just [] else  path2 adj cost start end [(start,start,0)]
 
-path2 ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> [(a,a,b)] -> [a] 
+path2 ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> [(a,a,b)] -> Maybe [a] 
 path2 adj cost start end closedNodes = let newNode = pickOpenNode adj cost end closedNodes in
 	if newNode == Nothing 
-		then []
+		then Nothing
 		else if (snd3 . fromJust $ newNode) == end
-			then reconstructPath closedNodes start (fromJust newNode)  -- map snd3  closedNodes
+			then Just $ reconstructPath closedNodes start (fromJust newNode)  -- map snd3  closedNodes
 			else path2 adj cost start end ((fromJust newNode) : closedNodes)
 
-lpath ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> b -> [a]
-lpath adj cost start end maxDist = if end == start then [] else  lpath2 adj cost start end maxDist [(start,start,0)]
+lpath ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> b -> Maybe [a]
+lpath adj cost start end maxDist = if end == start then Just [] else  lpath2 adj cost start end maxDist [(start,start,0)]
 
-lpath2 ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> b -> [(a,a,b)] -> [a] 
+lpath2 ::(Eq a,Ord b, Num b) => (a->[a]) -> (a->a->b) -> a -> a -> b -> [(a,a,b)] -> Maybe [a] 
 lpath2 adj cost start end maxDist closedNodes = let newNode = pickOpenNode adj cost end closedNodes in
 	if newNode == Nothing 
-		then []
+		then Nothing
 		else if (thd3 . fromJust $ newNode) > maxDist
-			then []
+			then Nothing
 			else if (snd3 . fromJust $ newNode) == end
-				then reconstructPath closedNodes start (fromJust newNode)  -- map snd3  closedNodes
+				then Just $ reconstructPath closedNodes start (fromJust newNode)  -- map snd3  closedNodes
 				else lpath2 adj cost start end maxDist ((fromJust newNode) : closedNodes)
 
 reconstructPath :: (Eq a) =>  [(a,a,b)] -> a -> (a,a,b) -> [a]

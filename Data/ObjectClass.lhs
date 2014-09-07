@@ -65,9 +65,9 @@ instance Object ObjectA where
 
 worldObjects :: World -> [ObjectA]
 worldObjects wrld = 
+	[ObjectA wrld] ++ --NOTE The world must be first, or everything breaks
 	map ObjectA (people wrld) ++
-	map ObjectA (bottles wrld) ++
-	[ObjectA wrld]
+	map ObjectA (bottles wrld)
 
 \end{code}
 
@@ -89,7 +89,6 @@ worldDObj idt wrld =
 		f o list = if idn o == idt then list else o : list
 		list' = worldFold wrld f []
 	in setThings (wrld{wrldInv = deleteAll idt $ wrldInv wrld }) list'
-	
 
 worldRObj :: Object a => a -> World -> World
 worldRObj obj wrld = (worldAObj obj) . (worldDObj (idn obj)) $ wrld 
@@ -247,25 +246,6 @@ worldAppId = \wrld f idt -> worldFoldFilter wrld (\x -> idn x == idt) (\a b -> J
 worldFoldFilterStateT :: (Object a, Monad m) => World -> (a -> Bool) -> (a -> StateT s m ()) -> StateT s m ()
 worldFoldFilterStateT wrld test f =  foldr (\a s -> (f $ a) >> s) (return ()) (filter test $ things wrld) -- liftM mconcat $ forM (filter test (things wrld)) f
 
-{- Testing purposes only
-worldFoldFilterStateTTest :: StateT World IO ()
-worldFoldFilterStateTTest = 
-	let 
-		w = worldAObj (newPlayerId $ Id 0) newWorld 
-		fn :: ObjectA -> StateT World IO ()
-		fn o = stateTMonadLift $ putStrLn "TESTSUCCESS"
-	in
-		worldFoldFilterStateT w (const True) fn
--}
-
-\end{code}
-
-
-
-\begin{code}
-
-worldFoldFilter' ::Object c => World -> (c -> Bool) -> (c -> b -> b) -> b -> b
-worldFoldFilter' = \wrld test f z  -> foldl' (flip f) z (filter test (things wrld))
 
 \end{code}
 
@@ -431,18 +411,33 @@ We just need setThings w ws = head ws
 
 --ok so, see above, this should work even where the source or target are the world.
 moveItemContainer :: World -> Id -> Id -> Id -> Maybe World
-moveItemContainer wrld sourceId targId itmId = 
+moveItemContainer wrld sourceId targId itmId =
+	let
+		checkInv :: World -> ContainerA -> Maybe World
+		checkInv w c = if checkInventory c then Just w else Nothing
+		takeFromInv :: World -> ( ContainerA -> World )
+		takeFromInv w c = worldRObj (setInventory c $ delete itmId $ inventory c) w
+		addToInv :: World -> ( ContainerA -> World )
+		addToInv w c = worldRObj (setInventory c $ itmId : (inventory c) ) w
+		moveParent :: World -> ( ObjectA -> World )
+		moveParent w o = worldRObj (setParent o $ targId ) w
+		moveLoc :: World -> ObjectA -> Maybe World
+		moveLoc w o = 
+				let 
+					mloc = 
+						if targId == (Id 0) 
+							then worldAppId w (loc :: ObjectA -> Coord) sourceId
+							else worldAppId w (loc :: ObjectA -> Coord) targId
+				in
+					mloc >>= \loc' -> Just $ worldRObj (setLoc o loc') w
+	in
 	(worldAppId wrld (takeFromInv wrld) sourceId ) >>= 
-	(\w -> worldAppId w    (addToInv w) targId   ) >>= 
-	(\w -> worldAppId w  (moveParent w) itmId    )
-		where
-			takeFromInv :: World -> ( ContainerA -> World )
-			takeFromInv = \w -> (\c -> worldRObj (setInventory c $ delete itmId $ inventory c) w )
-			addToInv :: World -> ( ContainerA -> World )
-			addToInv = \w -> (\c -> worldRObj (setInventory c $ itmId : (inventory c) ) w )
-			moveParent :: World -> ( ObjectA -> World )
-			moveParent = \w -> (\o -> worldRObj (setParent o $ targId ) w)
-
+	(\w -> worldAppId w (addToInv w) targId ) >>= 
+	(\w -> join $ worldAppId w (checkInv w) targId) >>=
+	(\w -> worldAppId w (moveParent w) itmId ) >>=
+	(\w -> join $ worldAppId w (moveLoc w) itmId)
+			
+			
 
 \end{code}
 
@@ -560,7 +555,7 @@ instance Object World where
 	setLoc = \w _ -> w
 	names = \_ -> []
 	things = \w -> tail [w]
-	setThings = \w ws -> w -- fromJust $ (listToMaybe ws) `mplus` (Just w) --This doesn't work as I expected. 
+	setThings = \w ws -> fromJust $ (listToMaybe ws) `mplus` (Just w) --This doesn't work as I expected. 
 	objVolume = \_ -> Ml (10^27) --apparently this is somewhat accurate, order of mag, via wolfram alpha
 	parent = \_ -> Id 0
 	setParent = \w _ -> w 
@@ -602,8 +597,6 @@ incIdW wrld = let i = wrldId wrld in (i,wrld{wrldId = incId i})
 
 incTick :: State World ()
 incTick = modify (\w -> w{tick = (tick w) + 1})
-
-
 
 clearSysEvent :: World -> World
 clearSysEvent = \w -> w{sysEvent = Nothing}

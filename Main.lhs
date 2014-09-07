@@ -143,9 +143,13 @@ deployIntent = do
 	wrld <- get
 	foldr (\(idt,tic,intnt) s ->  get >>= \w -> if isNothing intnt then updateIntent idt else
 		( case checkIntentTime w idt tic (fromJust intnt) of
-			Nothing    -> (stateTMonadLift $ putStrLn $ "deployIntent Nothing" ) >> return () --do nothing
-			Just True  -> (stateTMonadLift $ putStrLn $ "deployIntent True" ) >> maybeModifyT (\w -> doAction idt w (fromJust intnt)) 
-			Just False -> (stateTMonadLift $ putStrLn $ "deployIntent False" ) >> updateIntent idt
+			Nothing    -> return () --do nothing
+			Just True  -> do
+				w <- get
+				let (w',str) = doAction idt w (fromJust intnt)
+				(if isNothing w' then return () else put $ fromJust w')
+				(if null str then return () else stateTMonadLift . putStrLn $ str)
+			Just False -> updateIntent idt
 		) >> s) (return ()) ( wrldIntents wrld )
 
 \end{code}
@@ -154,7 +158,8 @@ deployIntent = do
 so VerifyIntents folds over every living thing and ensures there is a coorsponding actioncollection
 and in the second step folds over every actioncollection and checks for a coorsponding living thing.
 The second step is probably superfluous
-Actually we might want a third step to ensure no duplicate ids
+Actually we might want a third step to ensure no duplicate ids, done
+
 \begin{code}
 
 verifyIntents :: StateT World IO ()
@@ -169,7 +174,7 @@ verifyIntents = do
 		)
 	modify 
 		(\wrld -> wrld { wrldIntents =  foldr 
-				(\tok@(idt,_,_) list -> if isNothing $ worldAppId wrld (idn :: AliveA -> Id) idt
+				(\tok@(idt,_,_) list -> if (isNothing $ worldAppId wrld (idn :: AliveA -> Id) idt ) || (elem idt (map fst3 list))
 					then list
 					else tok : list
 				) [] (wrldIntents wrld)
@@ -177,20 +182,20 @@ verifyIntents = do
 		)
 
 
-
-
 --note fromJust . worldAppId is justified as this will only be called after checkIntent which already depends on worldAppId
 --for now however we don't have any variance in speeds, so idt is currently unused
 checkIntentTime :: World -> Id -> Integer -> Intent -> Maybe Bool
 checkIntentTime wrld idt tic intnt = let curTime = (tick wrld) - 2 in
 	case intnt of
-		SysCom _ -> Just $ tic > ( curTime )
+		SysCom _ -> Just $ tic > curTime
 		Move _   ->
-			if tic > (curTime )
-				then Just True
+			if (tic + 11) > curTime
+				then if 1 == ( rem (abs $ curTime - tic) 3 )
+					then Just True
+					else Nothing
 				else Just False
-		Get _    -> Just $ tic > ( curTime )
-		Look _   -> Just $ tic > ( curTime )
+		Get _    -> Just $ tic > curTime
+		Look _   -> Just $ tic > curTime
 
 updateIntent :: Id -> StateT World IO ()
 updateIntent idt = do
@@ -234,7 +239,12 @@ doActions :: StateT World IO ()
 doActions = do
 	wrld <- get
 	foldr (\(idt,tic,intnt) s -> if isNothing intnt then return () else
-		(maybeModifyT (\w -> doAction idt w $ fromJust intnt) ) >> s) (return ()) (wrldIntents wrld)
+		( do
+			w <- get
+			let (w',str) = doAction idt w $ fromJust intnt
+			(if isNothing w' then return () else put $ fromJust w')
+			(if null str then return () else stateTMonadLift . putStrLn $ str)
+		) >> s) (return ()) (wrldIntents wrld)
 
 
 --we may want some smarter way of sorting multiple viable intents
@@ -245,17 +255,19 @@ pickIntent idt wrld toks =
 		listToMaybe . filter (checkIntent idt wrld) =<<	worldAppId wrld (\peep -> tokensToIntent wrld peep toks) idt
 
 checkIntent :: Id -> World -> Intent -> Bool
-checkIntent = not . isNothing .:: doAction
+checkIntent = not . isNothing . fst .:: doAction
 
-doAction :: Id -> World -> Intent -> Maybe World
+doAction :: Id -> World -> Intent -> (Maybe World,String)
 doAction idt wrld intnt = 
 	case intnt of
-		SysCom x -> Just $ wrld{sysEvent=Just x}
-		Move (Target dir tId) -> (worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld 
-		_        -> Nothing
+		SysCom x -> (Just $ wrld{sysEvent=Just x},[])
+		Move (Target dir tId) -> ((worldAppId wrld (loc :: ObjectA -> Coord) tId ) >>= \x -> doMove idt x dir wrld , [] )
+		Get x -> ( doGet wrld idt x , [] )
+		Look (Target dir tId) -> (Nothing,doLook wrld dir idt tId)
 
 \end{code}
 
+Hmm, the question is how we can do looking with this
 
 
 \begin{code}
@@ -265,7 +277,7 @@ doMove idt targ dir wrld =
 	let
 		getPath x y = lpath manAdj eucDistSqrd x y 10
 		g :: Coord -> AliveA -> Maybe World
-		g x peep = (listToMaybe $ getPath (loc peep) x) >>= \loc' ->
+		g x peep = (join $ liftM listToMaybe $ getPath (loc peep) x) >>= \loc' ->
 			Just $ worldRObj (setLoc peep loc') wrld
 		f y = join $ worldAppId wrld (g y) idt 
 	in
@@ -274,8 +286,30 @@ doMove idt targ dir wrld =
 			Just (Abs x) -> (coordDir x targ) >>= f
 			otherwise -> Nothing
 
+doGet :: World -> Id -> Id -> Maybe World
+doGet wrld idt itmId = 
+	let
+		peeploc = worldAppId wrld (loc :: ContainerA -> Coord) idt
+		tarloc = worldAppId wrld (loc :: ObjectA -> Coord) itmId
+		getPath x y = lpath manAdj eucDistSqrd x y 10
+		targId = fromJust $ (worldAppId wrld (parent :: ObjectA -> Id) itmId) `mplus` (Just $ Id 0)
+	in do
+		peeploc' <- peeploc
+		tarloc' <- tarloc
+		(getPath peeploc' tarloc') >>= \_ -> moveItemContainer wrld idt targId itmId
 
+doLook :: World -> Maybe Direction -> Id -> Id -> String
+doLook wrld mayDir sourceId tarId =
+	case mayDir of
+		Nothing -> descObj wrld sourceId tarId
+		Just (Abs x) -> descArea wrld 
+		Just (Rel x) -> descRel
 
+descObj :: World -> Id -> Id -> String
+
+descAbs :: World -> AbsDirection -> Id -> Id -> String
+
+descRel :: World -> RelDirection -> Id -> Id -> String
 
 \end{code}
 
