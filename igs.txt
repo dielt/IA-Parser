@@ -113,3 +113,32 @@ Also note
 current heap profiling command
 
 ia +RTS -hc -p -K100M -i0.005
+
+
+
+
+
+
+
+
+
+
+Some more thoughts, do we want to have hidden information
+
+due to the way we have set things up there will always be hidden information, in a certain sense
+
+but not as information
+
+that is to say, what is on the otherside of a wall will not be described, or reachable
+
+hence hidden, but by more physical mechanics, the entire object is unaccesable
+
+do we want, for instance names, of things to be learnable or always known
+
+This might be a nice addition, but seems somewhat tricky to handle
+
+The immediate impulse is to allow each living thing a list of names associated with every object.
+
+The player could then manually add names to be associated with some-thing. 
+
+Though there is then the question of whether want the callee to hear that assigned name or their own.

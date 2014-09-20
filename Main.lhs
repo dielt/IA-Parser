@@ -267,8 +267,6 @@ doAction idt wrld intnt =
 
 \end{code}
 
-Hmm, the question is how we can do looking with this
-
 
 \begin{code}
 
@@ -306,10 +304,13 @@ doLook wrld mayDir sourceId tarId =
 		Just (Rel x) -> descRel
 
 descObj :: World -> Id -> Id -> String
+descObj wrld sourceId targId = worldAppId wrld (("descObj:" ++) show . idn) targId
 
 descAbs :: World -> AbsDirection -> Id -> Id -> String
+descArea wrld dir sourceId targId = []
 
 descRel :: World -> RelDirection -> Id -> Id -> String
+descRel wrld dir sourceId targId = []
 
 \end{code}
 
