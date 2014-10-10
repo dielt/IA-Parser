@@ -50,3 +50,39 @@ unfoldForest3 f z = concatMap g (f z)
 
 \end{code}
 
+
+\begin{code}
+
+--attaches the provided tree to any node equal to the target, note may happen multiple times
+attachTree :: (Eq a) => Tree a -> a -> Tree a -> Tree a
+attachTree (Node x xs) targ newTree = 
+	let 
+		xs' = ( map (\ts -> attachTree ts targ newTree) xs )
+	in
+		if	x == targ
+			then Node x (newTree : xs')
+			else Node x xs'
+
+--this stuff is already in appropriate foldable etc libraries
+
+--go depth first
+foldTreeDeep :: (a -> b -> b) -> b -> Tree a -> Tree b
+foldTreeDeep f z (Node x xs) = let x' = f x z in
+	Node x' (foldr (\a b -> (foldTreeDeep f z a) : b) [] xs)
+
+foldTreeWide :: (a -> b -> b) -> b -> Tree a -> Tree b
+foldTreeWide f z tree@(Node x xs) =
+		
+
+getNode :: Tree a -> a
+getNode (Node x _) = x
+	
+--foldTreeMPlus
+
+mapTree :: (a -> b) -> Tree a -> Tree b
+mapTree f (Node x xs) = Node (f x) (map (mapTree f) xs )
+
+
+\end{code}
+
+

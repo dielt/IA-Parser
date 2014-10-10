@@ -7,6 +7,7 @@ module Util.Base where
 import Data.Maybe
 import Data.Monoid
 import Data.Tree
+import Data.List
 import Control.Monad
 import Control.Monad.Trans.State
 import qualified Control.Category as C
@@ -63,13 +64,20 @@ tail' xs = if null xs then Nothing else Just $ tail xs
 appHead _ [] = []
 appHead f (x:xs) = (f x) : xs
 
-listFstFilter :: [(Bool,a)] -> [a]
-listFstFilter xs = foldr (\x list -> if fst x then snd x : list else list ) [] xs
-
-
 --again I assume that there is a prelude function for this
 deleteAll :: Eq a => a -> [a] -> [a]
 deleteAll = filter . (/=)
+
+
+\end{code}
+
+
+Some more specialized functions for dealing with lists
+
+\begin{code}
+
+listFstFilter :: [(Bool,a)] -> [a]
+listFstFilter xs = foldr (\x list -> if fst x then snd x : list else list ) [] xs
 
 --based on the last of the tuple
 findLowSnd2 :: Ord b => [(a,b)] -> Maybe (a,b)
@@ -112,11 +120,9 @@ emptyList a = tail [a]
 
 \begin{code}
 
-  
 --forces a function to act per line on streaming textual input
 eachLine :: (String -> String) -> (String -> String)
 eachLine f = unlines . map f . lines
-
 
 \end{code}
 
@@ -155,7 +161,6 @@ formatNames (x:xs) = let
 		)  ++ (formatNames remaining)
 
 
-
 upperCaseLetters :: [Char]
 upperCaseLetters =
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -163,6 +168,61 @@ upperCaseLetters =
 vowels :: [Char]
 vowels =
 	"aeoiuAEOIU"
+
+\end{code}
+
+
+Some neat number theory stuff, 
+This is mostly not well suited to computation however.
+
+\begin{code}
+
+relPrime = (1 ==) .: gcd
+
+--removes any numbers which have a common factor which had appeared previously in the list
+relPrimes :: [Integer] -> [Integer]
+relPrimes = reverse . (foldl' f [])
+	where 
+		f out inp = if  and . (map (relPrime inp)) $ out
+			then inp : out
+			else out
+
+relPrimesCheck :: Integer -> [Integer] -> Bool
+relPrimesCheck n list = n == ( last . relPrimes $ list ++ [n] )
+
+powerList = appNat (^)
+multList = appNat (*)
+
+--powerListPM = appInt (^) --turns out haskell doensn't like negative exponents.
+multListPM = appInt (*)
+
+
+appNat :: (Integral b) => (a->b->c) -> a -> [c]
+appNat f x = foldr (\a b ->  (f x a) : b ) [] [1,2..]
+
+appInt :: (Integral b) => (a->b->c) -> a -> [c]
+appInt f x = foldr (\a b -> (f x a) : b ) [] (alternateLists [1,2..] [-1,-2..])
+
+alternateLists :: [a] -> [a] -> [a]
+alternateLists [] list2 = []
+alternateLists list1 list2 = (head list1) : (alternateLists list2 (tail list1))
+
+
+--generates any multiples
+genMult :: [Integer] -> (Integer,Integer) -> [Integer]
+genMult list (top,bottom) = (deleteAll 1 list) >>= (takeWhile (\a -> top > a && bottom < a)) . multListPM
+
+--Valid for monotone increasing lists and assumes we only want positive multiples.
+genMultMon list' top = let list = takeWhile (top >) list' in
+	(deleteAll 1 list) >>= (takeWhile (top >)) . multList
+
+eulPhiFn :: Integer -> Integer
+eulPhiFn n = fromIntegral . length $
+	[x| x <- [1,2..n] , (gcd x n) == 1]
+
+--modEquiv :: Integer -> Integer -> Integer -> Bool
+modEquiv m a b = mod a m == mod b m
+
 
 
 \end{code}
