@@ -142,3 +142,26 @@ The immediate impulse is to allow each living thing a list of names associated w
 The player could then manually add names to be associated with some-thing. 
 
 Though there is then the question of whether want the callee to hear that assigned name or their own.
+
+
+We also are returning to the problem of clothing, especially how it relates to bodies. 
+
+So how would I ideally want this to work, clothing would have a certain size, you would certainly be
+able to wear clothing which was too large, too a point, and clothing which was only a bit too small
+would also be fine, though we may comment when putting it on, in descriptions, 
+and perhaps at random intervals if it is uncomfortably so.
+
+The question then is how we have clothing actually being worn. 
+My previous thought was to have a body be represented as some sort of tree
+We could then accomadate things like horse or monster armour.
+Moreover if someone transforms, growing or shrinking, the clothing would be set up to properly be affected.
+
+the idea is more fully, to have clothing also be some sort of tree, with each branch associated with a branch on the body
+
+Aside from the problem of general implimentation, There is the more specific problem of putting clothing on
+
+How are we supposed to know that a shirt should go on the torso and arms etc.
+
+We could do a decent job by guessing based on lengths, branch structure and a few helpful tags.
+
+This could be supplemented by allowing a user to specify exactly how they want to wear something. 

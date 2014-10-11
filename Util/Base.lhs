@@ -56,6 +56,8 @@ eat1Arg f = \a -> f
 eat2Arg f = \a b -> f
 eat3Arg f = \a b c -> f
 eat4Arg f = \a b c d -> f
+eat5Arg f = \a b c d e -> f
+eat6Arg f = \a b c d e f-> f
 
 
 head' = listToMaybe
@@ -63,6 +65,9 @@ tail' xs = if null xs then Nothing else Just $ tail xs
 
 appHead _ [] = []
 appHead f (x:xs) = (f x) : xs
+
+appTail _ [] = []
+appTail f (x:xs) = x : (map f xs)
 
 --again I assume that there is a prelude function for this
 deleteAll :: Eq a => a -> [a] -> [a]

@@ -91,15 +91,43 @@ foldTreeNodeDeep f z (Node x xs) = let x' = f x z in
 So for this we want to first apply the function to the node
 then fold over each sub node, then each subnode of each subnode
 -}
---foldTreeWide :: (a -> b -> b) -> b -> Tree a -> Tree b
---foldTreeWide f z tree@(Node x xs) =
-		
+{- --this is way more complicated then I had expected,
+-- we essentially need to construct the whole tree all at once.
+foldTreeWide :: (a -> b -> b) -> b -> Tree a -> Tree b
+foldTreeWide f z tree@(Node x xs) = 
+	let
+		x' = f x z
+		fold' h a (Node y ys) = zip (map getNode ys)
+	in
+
+foldTreeWideSub :: (a -> b -> b) -> b -> [Tree a] -> Int -> [Tree b]
+foldTreeWideSub f z t depth = 
+	let
+		inodes = zip [1,2..] $ getForestLevel depth t
+		foldr (\(i,(Node y ys)) )
+	in
+-}
+
+
+
 --foldTreeNodeDeepMplus
 --foldTree f z
 
+appNode :: (a -> b) -> Tree a -> Tree b
+appNode f (Node x xs) = Node (f x) xs 
 
 getNode :: Tree a -> a
 getNode (Node x _) = x
+
+getBranch :: Tree a -> [Tree a]
+getBranch (Node _ xs) = xs
+
+
+getForestLevel :: Integral i => i -> Tree a -> [Tree a]
+getForestLevel i (Node x xs)
+	| i <  1 = undefined --I am increasingly of the opinion that undefined is preferable to silently failing to some default.
+	| i == 1 = xs
+	| i >  1 = xs >>= getBranch >>= (getForestLevel $ i - 1)
 
 mapTree :: (a -> b) -> Tree a -> Tree b
 mapTree f (Node x xs) = Node (f x) (map (mapTree f) xs )

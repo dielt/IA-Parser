@@ -96,8 +96,44 @@ data ActionToken = MoveT | GetT | LookT | SysComT SysIntent deriving (Eq,Show)
 
 data Token = Affirm Bool | Name String | Action ActionToken | DirT Direction deriving (Eq,Show)
 
-
-
 type TokenCollection = [Tree Token]
 
 \end{code}
+
+
+helpful classes
+
+\begin{code}
+
+--essentially a failure class, with behavior analagous to maybe.
+class Zero a where
+	iszero :: a -> Bool
+	zero :: a
+	
+instance Zero [a] where
+	iszero = null
+	zero = []
+	
+instance Zero (Maybe a) where
+	iszero = isNothing
+	zero = Nothing
+
+instance Zero Bool where
+	iszero = not
+	zero = False
+
+instance Zero a => Zero (Tree a) where
+	iszero (Node x xs) = iszero x && iszero xs
+	zero = Node zero []
+
+zeroOr :: Zero a => [a] -> a
+zeroOr [] = zero 
+zeroOr (x:xs) = 
+	if iszero x
+		then zeroOr xs
+		else x
+
+\end{code}
+
+
+
