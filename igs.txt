@@ -165,3 +165,5 @@ How are we supposed to know that a shirt should go on the torso and arms etc.
 We could do a decent job by guessing based on lengths, branch structure and a few helpful tags.
 
 This could be supplemented by allowing a user to specify exactly how they want to wear something. 
+
+

@@ -136,4 +136,12 @@ zeroOr (x:xs) =
 \end{code}
 
 
+memory stuff, this can probably be moved to Data.ObjectClass
+\begin{code}
+data Memory = Memory {
+	actTick :: Integer
+	bodyMem :: Body
+	namesMem :: [(Id,String,Integer)]
+	}
 
+\end{code}

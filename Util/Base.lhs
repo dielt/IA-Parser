@@ -212,7 +212,6 @@ alternateLists :: [a] -> [a] -> [a]
 alternateLists [] list2 = []
 alternateLists list1 list2 = (head list1) : (alternateLists list2 (tail list1))
 
-
 --generates any multiples
 genMult :: [Integer] -> (Integer,Integer) -> [Integer]
 genMult list (top,bottom) = (deleteAll 1 list) >>= (takeWhile (\a -> top > a && bottom < a)) . multListPM
@@ -227,6 +226,29 @@ eulPhiFn n = fromIntegral . length $
 
 --modEquiv :: Integer -> Integer -> Integer -> Bool
 modEquiv m a b = mod a m == mod b m
+
+{- not working right
+powerDiv a b =
+	let f x y = 
+		if x `rem` y == 0 
+			then f x (y*b)
+			else y `quot` b
+	in
+	if a `rem` (f a b) == 0
+		then Just $ f a b
+		else Nothing
+-}
+
+
+--haha
+primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97]
+
+primeFact :: Integral a => a -> [a]
+primeFact n = foldr f [] primes
+	where
+		f a list = undefined
+	
+
 
 
 

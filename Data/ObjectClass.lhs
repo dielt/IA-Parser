@@ -311,6 +311,10 @@ I.e. we clear the world based on the things function and then replace them with 
 
 Also, A lot of fromJusts in the following code, we should probably replace them 
 
+Ideally we are only ever going to require a single property in any given function. 
+
+re-looking up a given object in multiple contexts allows us to have multiple properties required to complete a chain.
+
 
 \begin{code}
 
