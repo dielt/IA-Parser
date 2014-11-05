@@ -57,7 +57,7 @@ eat2Arg f = \a b -> f
 eat3Arg f = \a b c -> f
 eat4Arg f = \a b c d -> f
 eat5Arg f = \a b c d e -> f
-eat6Arg f = \a b c d e f-> f
+eat6Arg f = \a b c d e g -> f
 
 
 head' = listToMaybe
@@ -240,7 +240,7 @@ powerDiv a b =
 -}
 
 
---haha
+--haha, primes up to 100, note 101 is prime and not included. 
 primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97]
 
 primeFact :: Integral a => a -> [a]

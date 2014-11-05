@@ -40,14 +40,14 @@ liftCir2 f  = Circuit $ \a -> ([liftCir (f a)],mzero)
 liftCir3 :: MonadPlus m => (a -> a -> a ->  (m b)) -> Circuit a (m b)
 liftCir3 f  = Circuit $ \a -> ([liftCir2 (f a)],mzero)
 
---This needs testing, It should be that first is first.
+--Generalization of the above, first should be first.
 liftCirN :: MonadPlus m => Int -> ([a] -> (m b)) -> Circuit a (m b)
 liftCirN n f 
 	| n <  1 = liftCir $ const mzero
 	| n == 1 = Circuit $ \a -> ([],f [a])
 	| n >  1 = Circuit $ \a -> ([liftCirN (n-1) (\xs -> f (a : xs) ) ],mzero)
 
-
+--lifted (.)
 chainCir :: Circuit b c -> Circuit a b -> Circuit a c
 chainCir cir2 cir1 =
 	Circuit $ \a ->
@@ -63,7 +63,7 @@ appendCir cir2 cir1 =
 	Circuit $ \a -> 
 		let (cir1',b) = (unCircuit cir1) $ a 
 		in (cir2 : cir1',b)
--- i.e. cir2 `appendCir` cir1 adds cir2 to cir1
+-- i.e. cir2 `appendCir` cir1 adds cir2 into cir1
 
 --This combines two parsers into one applied simultaniusly, using mplus
 combineCir :: MonadPlus m => Circuit a (m b) -> Circuit a (m b) -> Circuit a (m b)

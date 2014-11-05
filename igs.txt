@@ -166,4 +166,50 @@ We could do a decent job by guessing based on lengths, branch structure and a fe
 
 This could be supplemented by allowing a user to specify exactly how they want to wear something. 
 
+We can return to this later
 
+
+
+We've recently(OCT2014) been thinking about map structure, 
+we don't want to return to the practice, from last year of just going off of a heightmap
+with an eye to later embedding in buildings. 
+I think instead we should start with buildings proper
+The current plan is to define vague building templates, 
+which the program then assembles, semi randomly into the actual buildings, subject to the environment.
+This would involve a 3 level structure
+<Furniture> .frn
+<Room> .rm
+<Building> .bld
+
+checkExtension :: String -> String -> Bool
+checkExtension ext = (ext ==) . reverse . (takeWhile ('.' \= )) . reverse
+
+The idea is that we could define a bunch of furniture items, with various properties, 
+some of these could be constants or ranges, perhaps even some simple logic
+
+We would then define rooms, with properties analagously as for furniture.
+But some of the properties for rooms will be the number of pieces of furniture, each with some required properties
+I.e. 1-2 tables, say and then preferably be able to say 1-3 chairs per table. for example.
+
+Buildings are almost identically above rooms, defined with some properties, 
+which we try to satisfy by collecting some number of generated rooms via the above.
+
+
+<furniture>
+	<chair> -- This is a tag that will be used in constructing rooms.
+	<desc=a small wooden chair>
+	<name=chair>
+	<structure=>
+
+<furniture>
+	<chair> --note we if a <chair> is required, we can choose at random.
+	<desc=a small wooden stool>
+	<name=stool>
+
+<furniture>
+	<table>
+	<>
+
+<furniture>
+	<door>
+	<>
