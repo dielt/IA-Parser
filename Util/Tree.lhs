@@ -1,5 +1,5 @@
 \begin{code}
-
+{-# LANGUAGE TypeFamilies #-}
 
 module Util.Tree where
 
@@ -10,6 +10,27 @@ import Control.Monad
 
 \end{code}
 
+
+
+This is the class which we can use in our general tree construction
+
+\begin{code}
+
+
+class TreeAnalogue t where
+	type TreeType t :: *
+	treeToData :: Tree (TreeType t) -> [String] -> t
+
+--we can use this, in general if we don't want extra arguements.
+emptyTreeToData :: (Tree (TreeType t) -> t) -> Tree (TreeType t) -> [String] -> t
+emptyTreeToData f t [] = f t
+emptyTreeToData f t (x:xs) = undefined -- we could do a nicer error.
+
+
+ 
+
+
+\end{code}
 
 
 
@@ -113,7 +134,7 @@ foldTreeWideSub f z t depth =
 --foldTreeNodeDeepMplus
 --foldTree f z
 
-appNode :: (a -> b) -> Tree a -> Tree b
+appNode :: (a -> a) -> Tree a -> Tree a
 appNode f (Node x xs) = Node (f x) xs 
 
 getNode :: Tree a -> a

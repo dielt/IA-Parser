@@ -213,3 +213,48 @@ which we try to satisfy by collecting some number of generated rooms via the abo
 <furniture>
 	<door>
 	<>
+	
+etc.
+
+We might then want some way of indicating when the tag refers to
+something else, i.e., the difference between
+
+<furniture>
+	<sink> --indicates this thing counts as a sink
+	
+and
+
+<room>
+	<#1-1#sink> --indicates that we should incorperate a single sink into the above
+	<#2-3#sink> --indicates we should incorperate between 2 and 3 sinks 
+
+
+
+We've recently noticed that all of these essentially have a tree structure
+It has been a continual problem, that trees are fairly awkward to construct
+Because of these it would be worthwhile to construct some sort of general tree builder
+
+Now it seems a bit difficult to have this work in general
+in addition to any sort of explicit tree analogue
+we may want to have this apply to circuits, which are only implicitly trees
+
+
+This level of generality seems to require a per data type way to extract the required information from trees
+
+i.e.
+
+class TreeAnalogue t where
+	data TreeType :: *
+	treeToData :: Tree TreeType -> [String] -> t
+
+with type families
+
+The string allows us to construct an algebriac data type with the tree as a part.
+
+
+
+
+
+
+
+

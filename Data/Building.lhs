@@ -8,7 +8,19 @@ module Data.Building where
 
 The base data types for
 
+
+
+
 \begin{code}
+
+data Furniture = 
+
+data Room =
+
+data Building =
+
+
+
 
 
 

@@ -1,9 +1,12 @@
 \begin{code}
+{-# LANGUAGE TypeFamilies #-}
 
 
 module Util.Circuit where
 
+import Util.Tree
 
+import Data.Tree
 import Control.Monad
 import qualified Control.Category as C
 import Control.Applicative
@@ -45,7 +48,7 @@ liftCirN :: MonadPlus m => Int -> ([a] -> (m b)) -> Circuit a (m b)
 liftCirN n f 
 	| n <  1 = liftCir $ const mzero
 	| n == 1 = Circuit $ \a -> ([],f [a])
-	| n >  1 = Circuit $ \a -> ([liftCirN (n-1) (\xs -> f (a : xs) ) ],mzero)
+	| n >  1 = Circuit $ \a -> ([liftCirN (n - 1) (\xs -> f (a : xs) ) ],mzero)
 
 --lifted (.)
 chainCir :: Circuit b c -> Circuit a b -> Circuit a c
@@ -64,6 +67,10 @@ appendCir cir2 cir1 =
 		let (cir1',b) = (unCircuit cir1) $ a 
 		in (cir2 : cir1',b)
 -- i.e. cir2 `appendCir` cir1 adds cir2 into cir1
+
+--lifts appendCir to lists
+appendCirs :: Circuit a b -> [Circuit a b] -> Circuit a b
+appendCirs cir1 cirs = foldr appendCir cir1 cirs
 
 --This combines two parsers into one applied simultaniusly, using mplus
 combineCir :: MonadPlus m => Circuit a (m b) -> Circuit a (m b) -> Circuit a (m b)
@@ -93,4 +100,29 @@ instance C.Category Circuit where
 
 
 \end{code}
+
+
+Makes explicit the tree structure of circuits
+\begin{code}
+
+treeToCircuit :: Tree (a -> b) -> Circuit a b
+treeToCircuit (Node f fs) = appendCirs (liftCir f) (map treeToCircuit fs)
+
+instance TreeAnalogue (Circuit a b) where
+	type TreeType (Circuit a b) = (a -> b)
+	treeToData = emptyTreeToData treeToCircuit
+
+
+
+
+
+
+\end{code}
+
+
+
+
+
+
+
 
