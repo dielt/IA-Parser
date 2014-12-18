@@ -317,7 +317,7 @@ re-looking up a given object in multiple contexts allows us to have multiple pro
 
 
 \begin{code}
-
+--this is obviously terrible, in general we should never need to do this, prefering instead to look up id's based on one class at a time.
 setAliveContainerAs :: World -> [AliveContainerA] -> World
 setAliveContainerAs wrld list =
 	let --this is could use cleaning up

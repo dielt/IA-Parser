@@ -179,6 +179,7 @@ vowels =
 
 Some neat number theory stuff, 
 This is mostly not well suited to computation however.
+We might want to put this into its own file
 
 \begin{code}
 
@@ -243,11 +244,55 @@ powerDiv a b =
 --haha, primes up to 100, note 101 is prime and not included. 
 primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97]
 
-primeFact :: Integral a => a -> [a]
-primeFact n = foldr f [] primes
+--I still am not familiar with a good way of generating the infinite list of primes.
+primeGen :: Integral a => [a]
+primeGen = foldr f [] [2,3..10]
 	where
-		f a list = undefined
-	
+		f :: Integral b => b -> [b] -> [b]
+		f a primeList = 
+			if (foldl dividePower a primeList) == 1
+				then primeList
+				else a : primeList
+
+-- We essentially have n lists here 
+
+
+
+
+
+pFn n 
+	| n < 0 = 0
+	| n == 0 = 1
+	| otherwise = sum $ map fn [1,2..n]
+		where
+			fn k = (-1)^(k+1) * ( 
+				(pFn (n - ( k*(3*k - 1) `quot` 2) )) +  (pFn (n - (k*(3*k + 1) `quot` 2)   ) )   
+				)
+--
+lal = [x | x <- [1,2..] , ((pFn x) `mod` 1000) == 0 ]
+
+list4nCons = foldl (\(b,list) a -> if a == b + 1 then (a,(a,b) : list)  else (a,list) ) (7,[]) list4n
+
+list4n = sort $ 
+	( take 2000 [x | b <- [1,2..], let x = 8*b - 1] ) ++ 
+	( take 500 [x | b <- [1,2..], let x = 4*(8*b - 1)] ) ++
+	( take 150 [x | b <- [1,2..], let x = (4^2)*(8*b - 1)] ) ++ 
+	( take 50 [x | b <- [1,2..], let x = (4^3)*(8*b - 1)] ) ++ 
+	( take 20 [x | b <- [1,2..], let x = (4^4)*(8*b - 1)] ) 
+
+
+dividePower :: Integral a => a -> a -> a
+dividePower x 0 = undefined
+dividePower 1 _ = 1
+dividePower x 1 = x
+dividePower x n = if x `mod` n == 0
+	then f x n
+	else x
+		where 
+			f a b = 
+				if a `mod` (b*n) == 0 
+					then f a (b*n) 
+					else a `div` b
 
 
 

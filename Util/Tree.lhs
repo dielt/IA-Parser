@@ -20,6 +20,8 @@ This is the class which we can use in our general tree construction
 class TreeAnalogue t where
 	type TreeType t :: *
 	treeToData :: Tree (TreeType t) -> [String] -> t
+	--stringToNode :: [String] -> TreeType t --I get the feeling this should be its own class
+	--stringToNode = read . unwords -- this would not be a terrible default cept for type
 
 --we can use this, in general if we don't want extra arguements.
 emptyTreeToData :: (Tree (TreeType t) -> t) -> Tree (TreeType t) -> [String] -> t
@@ -51,7 +53,7 @@ mapFullTree f = mconcat . (map f) . treeToList
 mapFullForest :: Monoid b => ([a] -> b) -> [Tree a] -> [b]
 mapFullForest = map . mapFullTree
 
---I shouldn't have to do this
+--I shouldn't have to do this again
 mapFullTreeM :: MonadPlus m => ([a] -> m b) -> Tree a -> m b
 mapFullTreeM f = msum . (map f) . treeToList
 

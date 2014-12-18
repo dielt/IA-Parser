@@ -251,8 +251,9 @@ with type families
 
 The string allows us to construct an algebriac data type with the tree as a part.
 
+I anticipate turning [String] into the algebriac data types will pose a bit of a challange. 
 
-
+I'm not even sure that we can always depend on Read for getting the appropriate TreeTypw
 
 
 

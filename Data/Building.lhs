@@ -4,20 +4,24 @@
 
 module Data.Building where
 
+
+
+
 \end{code}
 
-The base data types for
+The base data types for generating buildings 
 
 
 
 
 \begin{code}
 
-data Furniture = 
+data FurnitureTemplate = FurnitureTemplate {
+	}
 
-data Room =
+data RoomTemplate =
 
-data Building =
+data BuildingTemplate =
 
 
 

@@ -47,7 +47,7 @@ stateTFnMerger :: Monad m => (b -> a) -> StateT a m b -> StateT a m ()
 stateTFnMerger = stateTMerger .: liftM
 
 stateTMonadLift :: Monad m => m b -> StateT a m b
-stateTMonadLift = stateTJoin . return --equiv to, fnToStateT . const
+stateTMonadLift = stateTJoin . return --Maybe equiv to, fnToStateT . const ?
 
 fnToStateT :: Monad m => (a -> m b) -> StateT a m b
 fnToStateT f = 
