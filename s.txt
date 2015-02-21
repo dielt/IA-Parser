@@ -1,4 +1,0 @@
-This is going to be a general style guide, for any overall conventions which would be awkward to avoid hardcoding.
-
-For Instance, as a general rule we want the overworld grid size to be 1 meter.
-
