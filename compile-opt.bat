@@ -1,1 +1,0 @@
-ghc -o ia --make Main -fforce-recomp -O2 -funfolding-use-threshold=16
