@@ -66,7 +66,7 @@ appendCir cir2 cir1 =
 	Circuit $ \a -> 
 		let (cir1',b) = (unCircuit cir1) $ a 
 		in (cir2 : cir1',b)
--- i.e. cir2 `appendCir` cir1 adds cir2 into cir1
+-- i.e. cir2 `appendCir` cir1 adds cir2 into cir1, note this occurs regardless of success of cir1 for the input
 
 --lifts appendCir to lists
 appendCirs :: Circuit a b -> [Circuit a b] -> Circuit a b
@@ -112,9 +112,6 @@ instance TreeAnalogue (Circuit a b) where
 	type TreeType (Circuit a b) = (a -> b)
 	treeToData = emptyTreeToData treeToCircuit
 	
-
-
-
 
 
 \end{code}
