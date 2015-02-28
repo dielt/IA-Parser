@@ -2,14 +2,17 @@
 
 {-# LANGUAGE TypeFamilies #-}
 
-module Util.Tree where
+module Parser where
 
 
 import Util.Base
+import Util.Circuit
+import Util.Tree
 
 
-import Data.Tree
 import Data.Maybe
+import Data.Tree
+import Control.Monad
 --import Data.Foldable
 
 \end{code}
@@ -29,22 +32,25 @@ listToToken :: Eq b => [Token a b] -> [b] -> Forest a
 listToToken _ [] = []
 listToToken toks (b:bs) = 
 	map (\x -> Node x (listToToken toks bs) ) .  
-	mapMaybe (\tok -> if checkToken tok b then Just $ getToken tok else Nothing ) $ toks 
+	mapMaybe (\tok -> if checkToken tok $ b then Just $ getToken tok else Nothing ) $ toks 
+
+
+--This makes a circuit which just repeatedly tests for membership.
+--Essentially a context free lexer. 
+tokenToCircuit :: (Eq b,MonadPlus m) => Token a b -> Circuit b (m a)
+tokenToCircuit tok = Circuit $ 
+	\x -> if checkToken tok x then ( [tokenToCircuit tok] , return $ getToken tok ) else ( [tokenToCircuit tok] , mzero )
+
+
+--Tests for membership repeatedly and returns all successes.
+tokensToCircuit :: (Eq b) => [Token a b] -> Circuit b [a]
+tokensToCircuit toks = Circuit $
+	\x -> ( [tokensToCircuit toks] , mapMaybe (\t -> if checkToken t x then Just $ getToken t else Nothing ) $ toks )
+
 
 
 
 \end{code}
-
-
-
-
-
-
-
-
-
-
-
 
 
 
