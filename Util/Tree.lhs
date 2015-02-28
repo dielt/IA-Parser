@@ -17,17 +17,18 @@ This is the class which we can use in our general tree construction
 \begin{code}
 
 
-class TreeAnalogue t where
-	type TreeType t :: *
-	treeToData :: Tree (TreeType t) -> [String] -> t
+class ForestAnalogue t where
+	type ForestType t :: *
+	forestToData :: Forest (ForestType t) -> t
+	--dataToForest :: t -> Forest (ForestType t) 
 	--stringToNode :: [String] -> TreeType t --I get the feeling this should be its own class
 	--stringToNode = read . unwords -- this would not be a terrible default cept for type
 
---we can use this, in general if we don't want extra arguements.
-emptyTreeToData :: (Tree (TreeType t) -> t) -> Tree (TreeType t) -> [String] -> t
-emptyTreeToData f t [] = f t
-emptyTreeToData f t (x:xs) = undefined -- we could do a nicer error.
 
+class TreeAnalogue t where
+	type TreeType t :: *
+	treeToData :: Tree (TreeType t) -> t
+	--dataToTree :: t -> Tree (TreeType t) --note this doesn't work for circuits, essentially the motivating example. 
 
  
 

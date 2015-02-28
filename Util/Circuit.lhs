@@ -110,13 +110,14 @@ treeToCircuit (Node f fs) = appendCirs (liftCir f) (map treeToCircuit fs)
 
 instance TreeAnalogue (Circuit a b) where
 	type TreeType (Circuit a b) = (a -> b)
-	treeToData = emptyTreeToData treeToCircuit
-	
+	treeToData = treeToCircuit
 
 
 \end{code}
 
 
+	forestToData :: Forest (TreeType t) -> t
+	dataToForest :: t -> Forest (TreeType t) 
 
 
 

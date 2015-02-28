@@ -132,7 +132,22 @@ eachLine f = unlines . map f . lines
 \end{code}
 
 
+This should go into some sort of data.base thing
+\begin{code}
 
+newtype MTrue = MTrue { getTrue :: Bool }
+
+instance Monoid MTrue where
+	mempty = MTrue $ False
+	mappend x y = MTrue $ (getTrue x) && (getTrue y) 
+
+newtype MFalse = MFalse { getFalse :: Bool }
+
+instance Monoid MFalse where
+	mempty = MFalse $ True
+	mappend x y = MFalse $ (getFalse x) || (getFalse y)
+
+\end{code}
 
 
 
@@ -175,6 +190,19 @@ vowels =
 	"aeoiuAEOIU"
 
 \end{code}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 Some neat number theory stuff, 

@@ -9,13 +9,29 @@ import Util.Base
 
 
 import Data.Tree
+import Data.Maybe
+--import Data.Foldable
 
 \end{code}
 
 
 \begin{code}
 
-newtype Token a = Token (a,[String]) deriving (Eq,Show)
+newtype Token a b = Token (a,[b]) deriving (Eq,Show)
+
+checkToken :: Eq b => Token a b -> b -> Bool
+checkToken (Token (a,b)) c = c `elem` b
+
+getToken :: Token a b -> a
+getToken (Token (a,b)) = a
+
+listToToken :: Eq b => [Token a b] -> [b] -> Forest a
+listToToken _ [] = []
+listToToken toks (b:bs) = 
+	map (\x -> Node x (listToToken toks bs) ) .  
+	mapMaybe (\tok -> if checkToken tok b then Just $ getToken tok else Nothing ) $ toks 
+
+
 
 \end{code}
 
@@ -41,7 +57,7 @@ newtype Token a = Token (a,[String]) deriving (Eq,Show)
 
 
 
-I am not a fan of any of this, most of it is down better in Util.Tree.lhs
+I am not a fan of any of this, most of it is done better in Util.Tree.lhs
 
 data Lexer a b = Lexer
 	{	appLex :: [a] -> Forest b
