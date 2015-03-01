@@ -81,11 +81,12 @@ tokenListToCircuit tok = Circuit $
 			else mzero
 		)
 
+--similar to the above, an analogue to tokensToCircuit
 tokenListsToCircuit :: (Eq b) => [Token a [b]] -> Circuit b [a]
 tokenListsToCircuit list = Circuit $
 	\x -> let list' = map ((flip eatTokenList) x) list in
 		(
-		map tokenListToCircuit $ list' ++ list
+		[tokenListsToCircuit $ list' ++ list]
 		, 
 		mapMaybe (\t -> if checkTokenList t then Just $ getToken t else Nothing) $ list ++ list'
 		)
