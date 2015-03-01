@@ -67,6 +67,7 @@ tokensToCircuit :: (Eq b) => [Token a b] -> Circuit b [a]
 tokensToCircuit toks = Circuit $
 	\x -> ( [tokensToCircuit toks] , mapMaybe (\t -> if checkToken t x then Just $ getToken t else Nothing ) $ toks )
 
+
 --This is an analogue to tokenToCircuit not tokens, 
 --we take a list of tokens and test for membership sequentially, a success is only when all are matched in order
 tokenListToCircuit :: (Eq b,MonadPlus m) => Token a [b] -> Circuit b (m a)
@@ -80,6 +81,14 @@ tokenListToCircuit tok = Circuit $
 			else mzero
 		)
 
+tokenListsToCircuit :: (Eq b) => [Token a [b]] -> Circuit b [a]
+tokenListsToCircuit list = Circuit $
+	\x -> let list' = map ((flip eatTokenList) x) list in
+		(
+		map tokenListToCircuit $ list' ++ list
+		, 
+		mapMaybe (\t -> if checkTokenList t then Just $ getToken t else Nothing) $ list ++ list'
+		)
 
 \end{code}
 
