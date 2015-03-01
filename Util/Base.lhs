@@ -44,6 +44,7 @@ ifM True  x = x
 ifM False _ = mzero 
 
 
+
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
@@ -62,6 +63,9 @@ eat6Arg f = \a b c d e g -> f
 
 head' = listToMaybe
 tail' xs = if null xs then Nothing else Just $ tail xs
+
+emptyTail [] = []
+emtpyTail xs = tail xs
 
 appHead _ [] = []
 appHead f (x:xs) = (f x) : xs
@@ -138,14 +142,16 @@ This should go into some sort of data.base thing
 newtype MTrue = MTrue { getTrue :: Bool }
 
 instance Monoid MTrue where
-	mempty = MTrue $ False
+	mempty = MTrue $ True
 	mappend x y = MTrue $ (getTrue x) && (getTrue y) 
 
 newtype MFalse = MFalse { getFalse :: Bool }
 
 instance Monoid MFalse where
-	mempty = MFalse $ True
+	mempty = MFalse $ False
 	mappend x y = MFalse $ (getFalse x) || (getFalse y)
+
+
 
 \end{code}
 

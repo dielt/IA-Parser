@@ -87,7 +87,7 @@ attachTree (Node x xs) targ newTree =
 			then Node x (newTree : xs')
 			else Node x xs'
 
---some of this stuff is already in appropriate foldable etc libraries
+--some of this stuff is already in appropriate foldable etc libraries, or more generally in 
 
 --preserves true
 testTree :: (a -> Bool) -> Tree a -> Bool
