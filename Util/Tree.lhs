@@ -97,6 +97,12 @@ trimTree (Node x xs) = if isNothing x then Nothing else Just $ Node (fromJust x)
 
 
 
+trimForest :: [Tree (Maybe a)] -> [(Tree a)]
+trimForest = mapMaybe trimTree
+
+
+
+
 
 --some of this stuff is already in appropriate foldable etc libraries, or more generally in 
 
