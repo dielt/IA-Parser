@@ -4,6 +4,7 @@
 module Util.Tree where
 
 
+import Data.Maybe
 import Data.Monoid
 import Data.Tree
 import Control.Monad
@@ -86,6 +87,16 @@ attachTree (Node x xs) targ newTree =
 		if	x == targ
 			then Node x (newTree : xs')
 			else Node x xs'
+--
+
+
+trimTree :: Tree (Maybe a) -> Maybe (Tree a)
+trimTree (Node x xs) = if isNothing x then Nothing else Just $ Node (fromJust x) (mapMaybe f xs)
+	where 
+		f (Node y ys) = if isNothing y then Nothing else Just $ Node (fromJust y) (mapMaybe f ys)
+
+
+
 
 --some of this stuff is already in appropriate foldable etc libraries, or more generally in 
 

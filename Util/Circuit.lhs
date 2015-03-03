@@ -79,7 +79,7 @@ combineCir cir1 cir2 =
 		let 
 			(cir1',b1) = (unCircuit cir1) $ a 
 			(cir2',b2) = (unCircuit cir2) $ a
-		in ( mplus cir1' cir2' , mplus b1 b2 ) --nb mplus == (++) in the second case.
+		in ( mplus cir1' cir2' , mplus b1 b2 ) --nb mplus == (++) in the first case.
 
 --This combines n parsers into one, generalizing combineCir
 combineNCir :: MonadPlus m => [Circuit a (m b)] -> Circuit a (m b)
@@ -90,8 +90,14 @@ combineNCir circuits =
 			b'        = msum . (map snd) $ (map unCircuit circuits) <*> (pure a)
 		in (circuits',b')
 
-applyCircuits :: MonadPlus m => [Circuit a (m b)] -> a -> ([Circuit a (m b)],m b)
-applyCircuits circs obj = unCircuit (combineNCir circs) $ obj
+--applyies a list of circuits to an input, collects the results in two lists
+applyCircuitsList :: [Circuit a b] -> a -> ([Circuit a b],[b])
+applyCircuitsList cir obj = foldr  (\(cirs,b) (cirs',bs) -> ( cirs ++ cirs' , b : bs) ) ([],[]) $ map unCircuit cir <*> (pure obj)
+
+applyCircuitsM :: MonadPlus m => [Circuit a (m b)] -> a -> ([Circuit a (m b)],m b)
+applyCircuitsM circs obj = unCircuit (combineNCir circs) $ obj
+
+
 
 
 instance C.Category Circuit where
@@ -112,6 +118,26 @@ instance TreeAnalogue (Circuit a b) where
 	type TreeType (Circuit a b) = (a -> b)
 	treeToData = treeToCircuit
 
+
+listFnToCircuit :: ([a] -> b) -> Circuit a b
+listFnToCircuit f = let 
+		g xs = Circuit $ \x -> ( [g (x : xs )] , f (x : xs)  )
+	in g []
+
+--
+
+--we want to express failure to parse differantly then running out of material to be parsed. 
+--appCircuitList :: [Circuit a b] -> [a] -> [Tree (Maybe b)]
+--appCircuitList cirs list = if list = null
+
+
+
+	{-
+	
+treeFnToCircuit :: MonadPlus m => (Tree a -> (m b)) -> Circuit a (m b)
+treeFnToCircuit f = let
+	g xs = Circuit $ \x -> g 
+	-}
 
 \end{code}
 
