@@ -91,6 +91,8 @@ tokenListsToCircuit list = Circuit $
 		mapMaybe (\t -> if checkTokenList t then Just $ getToken t else Nothing) $ list ++ list'
 		)
 
+
+
 \end{code}
 
 
@@ -99,8 +101,15 @@ tokenListsToCircuit list = Circuit $
 
 \begin{code}
 
+--any branch of the tree which contains a node which evaluates to false will be snipped off at the nearest joint. 
+removeFailedParses :: Eq a => (a ->  Bool) -> Forest a -> Forest a
+removeFailedParses test forest = listToForest . filter ( and . map test ) . forestToList $ forest
 
+{-
+testTree1 = Node 1 [Node 1 [Node 1 []] , Node 1 [Node 2 [Node 3 []]] ,  Node 1 [Node 2 [Node 1 []]] , Node 2 [Node 2 [Node 2 [ Node 3 []] , Node 3 []] ] ]
 
+testTest1 x = x /= 3
+-}
 \end{code}
 
 

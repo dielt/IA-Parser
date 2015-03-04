@@ -44,7 +44,6 @@ ifM True  x = x
 ifM False _ = mzero 
 
 
-
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
 
@@ -76,6 +75,7 @@ appTail f (x:xs) = x : (map f xs)
 --again I assume that there is a prelude function for this
 deleteAll :: Eq a => a -> [a] -> [a]
 deleteAll = filter . (/=)
+
 
 
 \end{code}
@@ -165,6 +165,9 @@ instance Monoid MFalse where
 	mempty = MFalse $ False
 	mappend x y = MFalse $ (getFalse x) || (getFalse y)
 
+maybeToBool :: Maybe a -> Bool
+maybeToBool (Just _) = True
+maybeToBool Nothing = False
 
 
 \end{code}

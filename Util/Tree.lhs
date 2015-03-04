@@ -4,6 +4,7 @@
 module Util.Tree where
 
 
+
 import Data.Maybe
 import Data.Monoid
 import Data.Tree
@@ -48,18 +49,27 @@ treeToList :: Tree a -> [[a]]
 treeToList (Node x []) = [[x]]
 treeToList (Node x ts) = map (x :) $ concatMap treeToList ts
 
---note this is the strict inverse of treeToList and should only be used as such
+forestToList = concatMap treeToList
 
-{--This should only really be used as part of listToTree -- this is awful, we should just replace this with zippers.
-listToForest :: Eq a => [[a]] -> [Tree a]
-listToForest list = nub $
-	map (\x -> 
-		Node x 
-			( listToForest $ mapMaybe Tail' $  filter (\y -> head' y == Just x ) list
-			) 
-		)  
-	$ mapMaybe head' list
---}
+--This should only really be used as the inverse of listToTree 
+-- However note that listToTree . treeToList will join any identical nodes on the same level.
+--  i.e., Node 1 [Node 2 [Node 3 []] , Node 2 [Node 4 []]  ] -> Node 1 [Node 2 [ Node 3 [], Node 4 [] ] ]
+
+listToForest :: Eq a => [[a]] -> Forest a
+listToForest treeList =
+	let
+		f ::  Eq a => [a] -> Forest a -> Forest a
+		f list forest = 
+			if null list 
+				then forest 
+				else if (head list) `elem` (map getNode forest)
+					then foldFilterForest (head list) (\(Node x xs) -> Node x (f (tail list) xs) ) forest
+					else ( Node (head list) (f (tail list) []) ) : forest
+	in foldr f [] treeList
+--
+listToTree :: Eq a => [[a]] -> Tree a
+listToTree = head . listToForest
+
 
 --note we only return results for max depth, thus this differs from similar library fn foldMap.
 mapFullTree :: Monoid b => ([a] -> b) -> Tree a -> b
@@ -155,6 +165,12 @@ getNode (Node x _) = x
 getBranch :: Tree a -> [Tree a]
 getBranch (Node _ xs) = xs
 
+findTree :: Eq a => a -> Forest a -> Maybe (Tree a)
+findTree x = foldr (\tree val -> if (getNode tree) == x then Just tree else val) Nothing
+
+--replaces every instance of a tree starting with x with a tree having the function applied
+foldFilterForest :: Eq a => a -> (Tree a -> Tree a) -> Forest a -> Forest a
+foldFilterForest x f forest = foldr (\tree forest' -> if x == (getNode tree) then (f tree) : forest' else tree : forest'  ) [] forest
 
 getForestLevel :: Integral i => i -> Tree a -> [Tree a]
 getForestLevel i (Node x xs)
