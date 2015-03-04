@@ -48,6 +48,19 @@ treeToList :: Tree a -> [[a]]
 treeToList (Node x []) = [[x]]
 treeToList (Node x ts) = map (x :) $ concatMap treeToList ts
 
+--note this is the strict inverse of treeToList and should only be used as such
+
+{--This should only really be used as part of listToTree -- this is awful, we should just replace this with zippers.
+listToForest :: Eq a => [[a]] -> [Tree a]
+listToForest list = nub $
+	map (\x -> 
+		Node x 
+			( listToForest $ mapMaybe Tail' $  filter (\y -> head' y == Just x ) list
+			) 
+		)  
+	$ mapMaybe head' list
+--}
+
 --note we only return results for max depth, thus this differs from similar library fn foldMap.
 mapFullTree :: Monoid b => ([a] -> b) -> Tree a -> b
 mapFullTree f = mconcat . (map f) . treeToList
@@ -96,12 +109,12 @@ trimTree (Node x xs) = if isNothing x then Nothing else Just $ Node (fromJust x)
 		f (Node y ys) = if isNothing y then Nothing else Just $ Node (fromJust y) (mapMaybe f ys)
 
 
-
 trimForest :: [Tree (Maybe a)] -> [(Tree a)]
 trimForest = mapMaybe trimTree
 
-
-
+--if any branch contains a nothing at any point then we remove the whole branch
+trimTreeHarsh :: Tree (Maybe a) -> Maybe (Tree a)
+trimTreeHarsh (Node x xs) = if isNothing x then Nothing else Nothing
 
 
 --some of this stuff is already in appropriate foldable etc libraries, or more generally in 
@@ -126,33 +139,12 @@ foldTreeNodeDeep :: (a -> b -> b) -> b -> Tree a -> Tree b
 foldTreeNodeDeep f z (Node x xs) = let x' = f x z in
 	Node x' (foldr (\a b -> (foldTreeNodeDeep f z a) : b) [] xs)
 
---we should note that because we are, in these two functions, 
---preserving intrermediate steps, width vs depth matters
-{-
-So for this we want to first apply the function to the node
-then fold over each sub node, then each subnode of each subnode
--}
-{- --this is way more complicated then I had expected,
--- we essentially need to construct the whole tree all at once.
-foldTreeWide :: (a -> b -> b) -> b -> Tree a -> Tree b
-foldTreeWide f z tree@(Node x xs) = 
-	let
-		x' = f x z
-		fold' h a (Node y ys) = zip (map getNode ys)
-	in
+foldForestNodeDeep :: (a -> b -> b) -> b -> [Tree a] -> [Tree b]
+foldForestNodeDeep f z forest = foldr (\tree forest' -> foldTreeNodeDeep f z tree : forest' )  [] forest
 
-foldTreeWideSub :: (a -> b -> b) -> b -> [Tree a] -> Int -> [Tree b]
-foldTreeWideSub f z t depth = 
-	let
-		inodes = zip [1,2..] $ getForestLevel depth t
-		foldr (\(i,(Node y ys)) )
-	in
--}
-
-
-
---foldTreeNodeDeepMplus
---foldTree f z
+--this is much trickier than expected
+--foldForestNodeWide :: (a -> b -> b) -> b -> [Tree a] -> [Tree b]
+--foldForestNodeWide f z forest = 
 
 appNode :: (a -> a) -> Tree a -> Tree a
 appNode f (Node x xs) = Node (f x) xs 
@@ -173,5 +165,20 @@ getForestLevel i (Node x xs)
 mapTree :: (a -> b) -> Tree a -> Tree b
 mapTree f (Node x xs) = Node (f x) (map (mapTree f) xs )
 
+nubForest forest = foldr (\(Node x xs) forest' -> if x `elem` (map getNode forest') then forest' else  (Node x (nubForest xs)) : forest'  ) [] forest
 
 \end{code}
+
+
+
+
+Zippers and related
+\begin{code}
+
+newtype TaggedTree a = TaggedTree (Int,Tree (Integer,a))
+
+
+
+\end{code}
+
+

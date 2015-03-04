@@ -126,9 +126,18 @@ listFnToCircuit f = let
 
 --
 
+--note how this works is that we take running out of circuits as a seperate error then any failure returned by the circuit
 --we want to express failure to parse differantly then running out of material to be parsed. 
---appCircuitList :: [Circuit a b] -> [a] -> [Tree (Maybe b)]
---appCircuitList cirs list = if list = null
+appCircuitList :: [Circuit a b] -> [a] -> [Tree (Maybe b)]
+appCircuitList cirs list = 
+	if null list
+		then []  -- the differance between null list and cirs, allows us to tell whether we are done parsing or have failed. 
+		else if null cirs
+			then [Node Nothing []]
+			else map (\(cirs',b) -> Node ( Just b ) (appCircuitList cirs' (tail list)) ) $ (map unCircuit cirs) <*> [ head list ]
+--}
+
+
 
 
 

@@ -123,6 +123,20 @@ emptyList a = tail [a]
 
 
 
+\begin{code}
+
+
+joinTuple :: Monad m => m (m a , m b) -> ( m a , m b ) 
+joinTuple x = let
+	a' = x >>= (\(a,b) -> a )
+	b' = x >>= (\(a,b) -> b )
+	in (a',b')
+
+
+\end{code}
+
+
+
 
 
 
