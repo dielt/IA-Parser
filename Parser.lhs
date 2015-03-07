@@ -30,6 +30,10 @@ checkToken (Token (a,b)) c = c `elem` b
 checkTokenList :: Eq b => Token a [b] -> Bool
 checkTokenList (Token (a,b)) = or . map null $ b
 
+--essentially for convinience, with tokenListToCircuit
+listToTokenList :: a -> [b] -> Token a [b] --Note that [b] in Token a [b] is a list of lists of b
+listToTokenList a b = Token (a,[b])
+
 --returns a token with any matched lists
 eatTokenList :: Eq b => Token a [b] -> b -> Token a [b] 
 eatTokenList (Token (a,b)) c = Token  $
@@ -59,7 +63,6 @@ tokensToForest toks (b:bs) =
 tokenToCircuit :: (Eq b,MonadPlus m) => Token a b -> Circuit b (m a)
 tokenToCircuit tok = Circuit $ 
 	\x -> if checkToken tok x then ( [tokenToCircuit tok] , return $ getToken tok ) else ( [tokenToCircuit tok] , mzero )
-
 
 --Tests for membership repeatedly and returns any successes. 
 --note here we count a success being any matched token
@@ -92,7 +95,6 @@ tokenListsToCircuit list = Circuit $
 		)
 
 
-
 \end{code}
 
 
@@ -101,19 +103,24 @@ tokenListsToCircuit list = Circuit $
 
 \begin{code}
 
---any branch of the tree which contains a node which evaluates to false will be snipped off at the nearest joint. 
-removeFailedParses :: Eq a => (a ->  Bool) -> Forest a -> Forest a
-removeFailedParses test forest = listToForest . filter ( and . map test ) . forestToList $ forest
 
-{-
-testTree1 = Node 1 [Node 1 [Node 1 []] , Node 1 [Node 2 [Node 3 []]] ,  Node 1 [Node 2 [Node 1 []]] , Node 2 [Node 2 [Node 2 [ Node 3 []] , Node 3 []] ] ]
 
-testTest1 x = x /= 3
--}
+
 \end{code}
 
 
 
+\begin{code}
+
+
+data TokenValue = Atom String
+	| Number Integer
+	| Bool Bool
+
+
+
+
+\end{code}
 
 
 

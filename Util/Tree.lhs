@@ -4,6 +4,7 @@
 module Util.Tree where
 
 
+import Util.Base
 
 import Data.Maybe
 import Data.Monoid
@@ -67,8 +68,8 @@ listToForest treeList =
 					else ( Node (head list) (f (tail list) []) ) : forest
 	in foldr f [] treeList
 --
-listToTree :: Eq a => [[a]] -> Tree a
-listToTree = head . listToForest
+listToTree :: Eq a => [[a]] -> Maybe (Tree a)
+listToTree = head' . listToForest
 
 
 --note we only return results for max depth, thus this differs from similar library fn foldMap.
@@ -111,20 +112,6 @@ attachTree (Node x xs) targ newTree =
 			then Node x (newTree : xs')
 			else Node x xs'
 --
-
-
-trimTree :: Tree (Maybe a) -> Maybe (Tree a)
-trimTree (Node x xs) = if isNothing x then Nothing else Just $ Node (fromJust x) (mapMaybe f xs)
-	where 
-		f (Node y ys) = if isNothing y then Nothing else Just $ Node (fromJust y) (mapMaybe f ys)
-
-
-trimForest :: [Tree (Maybe a)] -> [(Tree a)]
-trimForest = mapMaybe trimTree
-
---if any branch contains a nothing at any point then we remove the whole branch
-trimTreeHarsh :: Tree (Maybe a) -> Maybe (Tree a)
-trimTreeHarsh (Node x xs) = if isNothing x then Nothing else Nothing
 
 
 --some of this stuff is already in appropriate foldable etc libraries, or more generally in 
@@ -181,7 +168,37 @@ getForestLevel i (Node x xs)
 mapTree :: (a -> b) -> Tree a -> Tree b
 mapTree f (Node x xs) = Node (f x) (map (mapTree f) xs )
 
-nubForest forest = foldr (\(Node x xs) forest' -> if x `elem` (map getNode forest') then forest' else  (Node x (nubForest xs)) : forest'  ) [] forest
+--this really ought to be superseeded by either
+nubForest :: Eq a => Forest a -> Forest a
+nubForest = listToForest . forestToList
+
+nubTree :: Eq a => Tree a -> Tree a
+nubTree (Node x xs) = Node (x) (nubForest xs)
+
+
+--simply removes any node that fails the test
+trimTree ::  (a ->  Bool) -> Tree a -> Maybe (Tree a)
+trimTree test (Node x xs) = 
+	if test x
+		then Just $ Node x (mapMaybe (trimTree test) xs) 
+		else Nothing
+
+--original action of trimTree, removes any nodes with nothing in them.
+fromJustTree :: Tree (Maybe a) -> Maybe (Tree a)
+fromJustTree tree = let tree' = trimTree (not . isNothing) tree in
+	if isNothing tree'
+		then Nothing
+		else Just $ mapTree fromJust (fromJust tree')
+
+trimForest :: (a ->  Bool) -> [Tree a] -> [(Tree a)]
+trimForest test = mapMaybe (trimTree test)
+
+--any branch of the tree which contains a node which evaluates to false will be snipped off at the nearest joint. 
+trimForestHarsh :: Eq a => (a ->  Bool) -> Forest a -> Forest a
+trimForestHarsh test forest = listToForest . filter ( and . map test ) . forestToList $ forest
+
+trimTreeHarsh :: Eq a => (a -> Bool) -> Tree a -> Maybe (Tree a)
+trimTreeHarsh test tree = listToTree . filter ( and . map test ) . treeToList $ tree
 
 \end{code}
 

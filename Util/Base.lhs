@@ -34,6 +34,9 @@ fst3 (x,_,_) = x
 snd3 (_,x,_) = x
 thd3 (_,_,x) = x
 
+appFst f (x,y) = (f x ,y)
+appSnd f (x,y) = (x, f y)
+
 if' :: Bool -> a -> a -> a
 if' True  x _ = x
 if' False _ y = y
@@ -43,6 +46,8 @@ ifM :: MonadPlus m => Bool -> m a -> m a
 ifM True  x = x
 ifM False _ = mzero 
 
+notNothing :: Maybe a -> Bool
+notNothing = not . isNothing
 
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (a,b,c) = f a b c
@@ -165,9 +170,6 @@ instance Monoid MFalse where
 	mempty = MFalse $ False
 	mappend x y = MFalse $ (getFalse x) || (getFalse y)
 
-maybeToBool :: Maybe a -> Bool
-maybeToBool (Just _) = True
-maybeToBool Nothing = False
 
 
 \end{code}
@@ -211,141 +213,24 @@ upperCaseLetters =
 vowels :: [Char]
 vowels =
 	"aeoiuAEOIU"
+	
+letters :: [Char] -- in alphebetic order
+letters =
+	"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-\end{code}
+numbers :: [Char]
+numbers = 
+	"1234567890"
 
+punctuation :: [Char]
+punctuation = 
+	"-_,.;:?"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-Some neat number theory stuff, 
-This is mostly not well suited to computation however.
-We might want to put this into its own file
-
-\begin{code}
-
-relPrime = (1 ==) .: gcd
-
---removes any numbers which have a common factor which had appeared previously in the list
-relPrimes :: [Integer] -> [Integer]
-relPrimes = reverse . (foldl' f [])
-	where 
-		f out inp = if  and . (map (relPrime inp)) $ out
-			then inp : out
-			else out
-
-relPrimesCheck :: Integer -> [Integer] -> Bool
-relPrimesCheck n list = n == ( last . relPrimes $ list ++ [n] )
-
-powerList = appNat (^)
-multList = appNat (*)
-
---powerListPM = appInt (^) --turns out haskell doensn't like negative exponents.
-multListPM = appInt (*)
-
-
-appNat :: (Integral b) => (a->b->c) -> a -> [c]
-appNat f x = foldr (\a b ->  (f x a) : b ) [] [1,2..]
-
-appInt :: (Integral b) => (a->b->c) -> a -> [c]
-appInt f x = foldr (\a b -> (f x a) : b ) [] (alternateLists [1,2..] [-1,-2..])
-
-alternateLists :: [a] -> [a] -> [a]
-alternateLists [] list2 = []
-alternateLists list1 list2 = (head list1) : (alternateLists list2 (tail list1))
-
---generates any multiples
-genMult :: [Integer] -> (Integer,Integer) -> [Integer]
-genMult list (top,bottom) = (deleteAll 1 list) >>= (takeWhile (\a -> top > a && bottom < a)) . multListPM
-
---Valid for monotone increasing lists and assumes we only want positive multiples.
-genMultMon list' top = let list = takeWhile (top >) list' in
-	(deleteAll 1 list) >>= (takeWhile (top >)) . multList
-
-eulPhiFn :: Integer -> Integer
-eulPhiFn n = fromIntegral . length $
-	[x| x <- [1,2..n] , (gcd x n) == 1]
-
---modEquiv :: Integer -> Integer -> Integer -> Bool
-modEquiv m a b = mod a m == mod b m
-
-{- not working right
-powerDiv a b =
-	let f x y = 
-		if x `rem` y == 0 
-			then f x (y*b)
-			else y `quot` b
-	in
-	if a `rem` (f a b) == 0
-		then Just $ f a b
-		else Nothing
--}
-
-
---haha, primes up to 100, note 101 is prime and not included. 
-primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97]
-
---I still am not familiar with a good way of generating the infinite list of primes.
-primeGen :: Integral a => [a]
-primeGen = foldr f [] [2,3..10]
-	where
-		f :: Integral b => b -> [b] -> [b]
-		f a primeList = 
-			if (foldl dividePower a primeList) == 1
-				then primeList
-				else a : primeList
-
--- We essentially have n lists here 
-
-
-
-
-
-pFn n 
-	| n < 0 = 0
-	| n == 0 = 1
-	| otherwise = sum $ map fn [1,2..n]
-		where
-			fn k = (-1)^(k+1) * ( 
-				(pFn (n - ( k*(3*k - 1) `quot` 2) )) +  (pFn (n - (k*(3*k + 1) `quot` 2)   ) )   
-				)
---
-lal = [x | x <- [1,2..] , ((pFn x) `mod` 1000) == 0 ]
-
-list4nCons = foldl (\(b,list) a -> if a == b + 1 then (a,(a,b) : list)  else (a,list) ) (7,[]) list4n
-
-list4n = sort $ 
-	( take 2000 [x | b <- [1,2..], let x = 8*b - 1] ) ++ 
-	( take 500 [x | b <- [1,2..], let x = 4*(8*b - 1)] ) ++
-	( take 150 [x | b <- [1,2..], let x = (4^2)*(8*b - 1)] ) ++ 
-	( take 50 [x | b <- [1,2..], let x = (4^3)*(8*b - 1)] ) ++ 
-	( take 20 [x | b <- [1,2..], let x = (4^4)*(8*b - 1)] ) 
-
-
-dividePower :: Integral a => a -> a -> a
-dividePower x 0 = undefined
-dividePower 1 _ = 1
-dividePower x 1 = x
-dividePower x n = if x `mod` n == 0
-	then f x n
-	else x
-		where 
-			f a b = 
-				if a `mod` (b*n) == 0 
-					then f a (b*n) 
-					else a `div` b
-
-
+characters = punctuation ++ numbers ++ letters
 
 
 \end{code}
+
+
+
+

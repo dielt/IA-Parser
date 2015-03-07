@@ -5,8 +5,10 @@
 module Util.Circuit where
 
 import Util.Tree
+import Util.Base
 
 import Data.Tree
+import Data.Maybe
 import Control.Monad
 import qualified Control.Category as C
 import Control.Applicative
@@ -99,7 +101,7 @@ applyCircuitsM circs obj = unCircuit (combineNCir circs) $ obj
 
 
 
-
+-- I guess this works, we're not using it for anything
 instance C.Category Circuit where
 	id = liftCir id
 	(.)= chainCir
@@ -108,7 +110,7 @@ instance C.Category Circuit where
 \end{code}
 
 
-Makes explicit the tree structure of circuits
+Makes explicit the tree structure of circuits -- this hasn't really turned out as being very useful.
 \begin{code}
 
 treeToCircuit :: Tree (a -> b) -> Circuit a b
@@ -128,7 +130,7 @@ listFnToCircuit f = let
 
 --note how this works is that we take running out of circuits as a seperate error then any failure returned by the circuit
 --we want to express failure to parse differantly then running out of material to be parsed. 
-appCircuitList :: [Circuit a b] -> [a] -> [Tree (Maybe b)]
+appCircuitList :: [Circuit a b] -> [a] -> Forest (Maybe b)
 appCircuitList cirs list = 
 	if null list
 		then []  -- the differance between null list and cirs, allows us to tell whether we are done parsing or have failed. 
@@ -138,17 +140,29 @@ appCircuitList cirs list =
 --}
 
 
+--continues on success
+successCircuit :: Circuit a (Maybe b) -> Circuit a (Maybe b)
+successCircuit cir = Circuit $ \a -> let (cirs',b) = (unCircuit cir) a in if isNothing b then ([],b) else (cirs', b)
+
+--continues on failure
+failCircuit :: Circuit a (Maybe b) -> Circuit a (Maybe b)
+failCircuit cir = Circuit $ \a -> let (cirs',b) = (unCircuit cir) a in if isNothing b then (cirs',b)  else ([], b)
+
+--the idea here being that this could be used for parsing a string by repeated parsing of characters.
+--also note we throw out the parse after every letter, this is because we don't want helloTHUIEO to be parsed succesfully as hello 
+subCircuitM :: MonadPlus m => [Circuit a (m b)] -> Circuit [a] (m b)
+subCircuitM cir = Circuit $
+	\list -> (\(x,y) -> ([subCircuitM cir],y) ) $ --note upon parsing a string it returns itself to be used again.
+		foldr (\a (cirs,z) -> applyCircuitsM cirs a  ) (cir,mzero) list
 
 
-
-	{-
-	
-treeFnToCircuit :: MonadPlus m => (Tree a -> (m b)) -> Circuit a (m b)
-treeFnToCircuit f = let
-	g xs = Circuit $ \x -> g 
-	-}
 
 \end{code}
+
+
+
+
+
 
 
 	forestToData :: Forest (TreeType t) -> t
