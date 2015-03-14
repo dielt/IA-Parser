@@ -33,7 +33,6 @@ class TreeAnalogue t where
 	treeToData :: Tree (TreeType t) -> t
 	--dataToTree :: t -> Tree (TreeType t) --note this doesn't work for circuits, essentially the motivating example. 
 
- 
 
 
 \end{code}

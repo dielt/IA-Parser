@@ -60,15 +60,23 @@ tokensToForest toks (b:bs) =
 
 --This makes a circuit which just repeatedly tests for membership.
 --Essentially a context free lexer. 
-tokenToCircuit :: (Eq b,MonadPlus m) => Token a b -> Circuit b (m a)
-tokenToCircuit tok = Circuit $ 
-	\x -> if checkToken tok x then ( [tokenToCircuit tok] , return $ getToken tok ) else ( [tokenToCircuit tok] , mzero )
+tokenToCircuitLong :: (Eq b,MonadPlus m) => Token a b -> Circuit b (m a)
+tokenToCircuitLong tok = Circuit $ 
+	\x -> if checkToken tok x then ( [tokenToCircuit tok] , return $ getToken tok ) else ( [tokenToCircuitLong tok] , mzero )
 
 --Tests for membership repeatedly and returns any successes. 
 --note here we count a success being any matched token
-tokensToCircuit :: (Eq b) => [Token a b] -> Circuit b [a]
-tokensToCircuit toks = Circuit $
-	\x -> ( [tokensToCircuit toks] , mapMaybe (\t -> if checkToken t x then Just $ getToken t else Nothing ) $ toks )
+tokensToCircuitLong :: (Eq b) => [Token a b] -> Circuit b [a]
+tokensToCircuitLong toks = Circuit $
+	\x -> ( [tokensToCircuitLong toks] , mapMaybe (\t -> if checkToken t x then Just $ getToken t else Nothing ) $ toks )
+
+tokenToCircuitShort :: (Eq b,MonadPlus m) => Token a b -> Circuit b (m a)
+tokenToCircuitShort tok = Circuit $
+	\x -> if checkToken tok x then ( [] , return $ getToken tok ) else ( [] , mzero )
+	
+tokensToCircuitShort :: (Eq b) => [Token a b] -> Circuit b [a]
+tokensToCircuitShort toks = Circuit $
+	\x -> ( [] , mapMaybe (\t -> if checkToken t x then Just $ getToken t else Nothing ) $ toks )
 
 
 --This is an analogue to tokenToCircuit not tokens, 
@@ -100,9 +108,10 @@ tokenListsToCircuit list = Circuit $
 
 
 
-
+A context sensitive parser
 \begin{code}
 
+cParser1Step :: Circuit a (m b)
 
 
 
@@ -116,6 +125,7 @@ tokenListsToCircuit list = Circuit $
 data TokenValue = Atom String
 	| Number Integer
 	| Bool Bool
+
 
 
 

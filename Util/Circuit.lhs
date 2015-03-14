@@ -70,6 +70,7 @@ appendCir cir2 cir1 =
 		in (cir2 : cir1',b)
 -- i.e. cir2 `appendCir` cir1 adds cir2 into cir1, note this occurs regardless of success of cir1 for the input
 
+
 --lifts appendCir to lists
 appendCirs :: Circuit a b -> [Circuit a b] -> Circuit a b
 appendCirs cir1 cirs = foldr appendCir cir1 cirs
@@ -81,14 +82,14 @@ combineCir cir1 cir2 =
 		let 
 			(cir1',b1) = (unCircuit cir1) $ a 
 			(cir2',b2) = (unCircuit cir2) $ a
-		in ( mplus cir1' cir2' , mplus b1 b2 ) --nb mplus == (++) in the first case.
+		in ( cir1' ++ cir2' , mplus b1 b2 ) 
 
 --This combines n parsers into one, generalizing combineCir
 combineNCir :: MonadPlus m => [Circuit a (m b)] -> Circuit a (m b)
 combineNCir circuits =
 	Circuit $ \a ->
 		let
-			circuits' = msum . (map fst) $ (map unCircuit circuits) <*> (pure a)
+			circuits' = concat . (map fst) $ (map unCircuit circuits) <*> (pure a)
 			b'        = msum . (map snd) $ (map unCircuit circuits) <*> (pure a)
 		in (circuits',b')
 
@@ -98,7 +99,6 @@ applyCircuitsList cir obj = foldr  (\(cirs,b) (cirs',bs) -> ( cirs ++ cirs' , b 
 
 applyCircuitsM :: MonadPlus m => [Circuit a (m b)] -> a -> ([Circuit a (m b)],m b)
 applyCircuitsM circs obj = unCircuit (combineNCir circs) $ obj
-
 
 
 -- I guess this works, we're not using it for anything
